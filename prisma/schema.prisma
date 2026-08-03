@@ -1,0 +1,191 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TenantType {
+  CORPORATE
+  SME
+  ENTERPRISE
+  GOVERNMENT
+  NONPROFIT
+}
+
+enum BillingCycle {
+  MONTHLY
+  QUARTERLY
+  SEMI_ANNUAL
+  ANNUAL
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  BANK_TRANSFER
+  GCASH
+  MAYA
+  CHECK
+  CASH
+}
+
+enum TenantStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  EXPIRED
+  CANCELLED
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  LOCKED
+}
+
+enum LocationType {
+  BRANCH
+  WAREHOUSE
+}
+
+model Tenant {
+  id        String     @id @default(cuid())
+  name      String
+  logoUrl   String?
+  subdomain String     @unique
+  type      TenantType @default(SME)
+
+  contactPerson String
+  email         String
+  contactNo     String
+
+  companyName        String
+  industry           String
+  tin                String?
+  businessRegNo      String?
+  addressLine1       String?
+  addressLine2       String?
+  city               String?
+  stateProvince      String?
+  postalCode         String?
+  country            String?  @default("Philippines")
+  website            String?
+
+  subscriptionStart DateTime?
+  subscriptionEnd   DateTime?
+  billingCycle      BillingCycle  @default(MONTHLY)
+  paymentMethod     PaymentMethod @default(BANK_TRANSFER)
+  status            TenantStatus  @default(PENDING)
+
+  users     User[]
+  roles     Role[]
+  locations Location[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+}
+
+model User {
+  id        String  @id @default(cuid())
+  tenantId  String? // NULL => platform admin (admin.erp.jra.com only)
+  tenant    Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  firstName    String
+  lastName     String
+  email        String
+  passwordHash String
+  isSuperAdmin Boolean    @default(false)
+  status       UserStatus @default(ACTIVE)
+  lastLoginAt  DateTime?
+
+  roles     UserRole[]
+  locations UserLocation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, email])
+  @@index([email])
+}
+
+// Permissions are the platform catalogue. Only platform admins manage these.
+model Permission {
+  id          String @id @default(cuid())
+  key         String @unique // e.g. "tenant.create"
+  module      String
+  description String?
+
+  roles RolePermission[]
+
+  createdAt DateTime @default(now())
+}
+
+// Roles combine permissions. Tenants own their roles; tenantId NULL = platform role.
+model Role {
+  id          String  @id @default(cuid())
+  tenantId    String?
+  tenant      Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  isSystem    Boolean @default(false)
+
+  permissions RolePermission[]
+  users       UserRole[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, name])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+model Location {
+  id       String       @id @default(cuid())
+  tenantId String
+  tenant   Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code     String
+  name     String
+  type     LocationType @default(BRANCH)
+  address  String?
+  city     String?
+  contactNo String?
+  isActive Boolean      @default(true)
+
+  users UserLocation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, code])
+}
+
+model UserLocation {
+  userId     String
+  locationId String
+  isPrimary  Boolean @default(false)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@id([userId, locationId])
+}
