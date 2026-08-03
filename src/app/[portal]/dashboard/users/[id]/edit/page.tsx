@@ -23,7 +23,12 @@ export default async function EditUserPage({ params }: { params: Promise<{ porta
   });
   if (!u || u.tenantId !== session.tenantId) notFound();
 
-  const roles = await prisma.role.findMany({ where: { tenantId: session.tenantId }, orderBy: { name: "asc" } });
+  // Tenant-owned roles plus the shared global "Tenant Admin" role, which a
+  // tenant can assign to its own users (role is tenantId NULL by design).
+  const roles = await prisma.role.findMany({
+    where: { OR: [{ tenantId: session.tenantId }, { name: "Tenant Admin", tenantId: null, isSystem: true }] },
+    orderBy: { name: "asc" },
+  });
   const locations = session.tenantId
     ? await prisma.location.findMany({ where: { tenantId: session.tenantId }, orderBy: { code: "asc" } })
     : [];

@@ -216,7 +216,14 @@ export async function saveUserAction(_p: ActionState, fd: FormData): Promise<Act
   if (dup && dup.id !== id) return { error: "A user with that email already exists here." };
 
   if (tenantId) {
-    const validRoles = await prisma.role.count({ where: { id: { in: roleIds }, tenantId } });
+    // Allow tenant-owned roles AND the shared global "Tenant Admin" role
+    // (which is tenantId NULL by design and can be assigned to tenant users).
+    const validRoles = await prisma.role.count({
+      where: {
+        id: { in: roleIds },
+        OR: [{ tenantId }, { name: "Tenant Admin", tenantId: null, isSystem: true }],
+      },
+    });
     if (validRoles !== roleIds.length) return { error: "Invalid role selection." };
     const validLocs = await prisma.location.count({ where: { id: { in: locationIds }, tenantId } });
     if (validLocs !== locationIds.length) return { error: "Invalid branch/warehouse selection." };
