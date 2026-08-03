@@ -1,9 +1,9 @@
 import "server-only";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { prisma } from "./db";
-import { subdomainFromHost, ADMIN_SUBDOMAIN } from "./tenant";
+import { ADMIN_SLUG } from "./tenant";
 
 const COOKIE = "jra_session";
 const secret = new TextEncoder().encode(
@@ -59,29 +59,52 @@ export async function getSession(): Promise<SessionPayload | null> {
   }
 }
 
-/** Current request's tenant context derived from the Host header. */
-export async function getHostContext() {
-  const h = await headers();
-  const host = h.get("host");
-  const sub = subdomainFromHost(host);
-  const isAdminPortal = sub === null || sub === ADMIN_SUBDOMAIN;
-  return { host, subdomain: isAdminPortal ? null : sub, isAdminPortal };
+export type Portal =
+  | { isAdminPortal: true; slug: "admin"; tenant: null; base: "/admin" }
+  | { isAdminPortal: false; slug: string; tenant: { id: string; name: string; slug: string; logoUrl: string | null; status: string }; base: string };
+
+/**
+ * Resolves the portal from the first URL segment.
+ * Returns null when the segment is not "admin" and no tenant matches — the
+ * caller is expected to render notFound().
+ */
+export async function resolvePortal(slug: string): Promise<Portal | null> {
+  const value = (slug ?? "").toLowerCase();
+
+  if (value === ADMIN_SLUG) {
+    return { isAdminPortal: true, slug: "admin", tenant: null, base: "/admin" };
+  }
+
+  const tenant = await prisma.tenant.findUnique({ where: { subdomain: value } });
+  if (!tenant) return null;
+
+  return {
+    isAdminPortal: false,
+    slug: tenant.subdomain,
+    tenant: {
+      id: tenant.id,
+      name: tenant.name,
+      slug: tenant.subdomain,
+      logoUrl: tenant.logoUrl,
+      status: tenant.status,
+    },
+    base: `/${tenant.subdomain}`,
+  };
 }
 
-/** Enforces that the session matches the portal being accessed. */
-export async function requireSession() {
+/**
+ * Enforces that the signed-in user belongs to the portal being accessed.
+ * - /admin       -> only users with tenantId === null
+ * - /[tenant]    -> only users whose tenantId matches that tenant
+ */
+export async function requireSession(portal: Portal) {
   const session = await getSession();
   if (!session) return { session: null as null, error: "UNAUTHENTICATED" as const };
-  const { isAdminPortal, subdomain } = await getHostContext();
 
-  if (isAdminPortal) {
-    // Platform admins only (tenant_id is null)
+  if (portal.isAdminPortal) {
     if (session.tenantId !== null) return { session: null, error: "WRONG_PORTAL" as const };
   } else {
-    if (session.tenantId === null) return { session: null, error: "WRONG_PORTAL" as const };
-    const tenant = await prisma.tenant.findUnique({ where: { id: session.tenantId } });
-    if (!tenant || tenant.subdomain !== subdomain)
-      return { session: null, error: "WRONG_PORTAL" as const };
+    if (session.tenantId !== portal.tenant.id) return { session: null, error: "WRONG_PORTAL" as const };
   }
   return { session, error: null };
 }

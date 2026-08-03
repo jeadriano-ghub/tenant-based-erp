@@ -1,20 +1,28 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { getPermissionKeys, can, hashPassword, requireSession } from "@/lib/auth";
+import { getPermissionKeys, can, hashPassword, requireSession, resolvePortal } from "@/lib/auth";
 import {
   tenantSchema, userSchema, roleSchema, locationSchema, permissionSchema,
 } from "@/lib/validation";
 import { PLATFORM_ONLY_KEYS } from "@/lib/permissions";
 
-export type ActionState = { error?: string; success?: string };
+export type ActionState = { error?: string; success?: string; id?: string };
 
-async function ctx() {
-  const { session, error } = await requireSession();
+/**
+ * Every mutating form carries a hidden `portal` field so the action can
+ * re-resolve the portal server-side and re-check the session against it.
+ */
+async function ctx(fd: FormData) {
+  const slug = String(fd.get("portal") ?? "").trim().toLowerCase();
+  const portal = await resolvePortal(slug);
+  if (!portal) throw new Error("UNKNOWN_PORTAL");
+  const { session, error } = await requireSession(portal);
   if (!session) throw new Error(error ?? "UNAUTHENTICATED");
   const keys = await getPermissionKeys(session.sub, session.isSuperAdmin);
-  return { session, keys };
+  return { session, keys, portal, base: portal.base };
 }
 
 function firstIssue(e: { issues: { message: string }[] }) {
@@ -32,7 +40,7 @@ function str(fd: FormData, k: string) {
 /* ------------------------------- TENANTS -------------------------------- */
 
 export async function saveTenantAction(_p: ActionState, fd: FormData): Promise<ActionState> {
-  const { session, keys } = await ctx();
+  const { session, keys, base } = await ctx(fd);
   if (session.tenantId !== null) return { error: "Only platform administrators manage tenants." };
 
   const id = str(fd, "id");
@@ -67,7 +75,7 @@ export async function saveTenantAction(_p: ActionState, fd: FormData): Promise<A
   const d = parsed.data;
 
   const clash = await prisma.tenant.findUnique({ where: { subdomain: d.subdomain } });
-  if (clash && clash.id !== id) return { error: "That subdomain is already taken." };
+  if (clash && clash.id !== id) return { error: "That tenant URL is already taken." };
 
   const data = {
     name: d.name,
@@ -95,24 +103,27 @@ export async function saveTenantAction(_p: ActionState, fd: FormData): Promise<A
     status: d.status,
   };
 
-  if (id) await prisma.tenant.update({ where: { id }, data });
-  else await prisma.tenant.create({ data });
+  const saved = id
+    ? await prisma.tenant.update({ where: { id }, data })
+    : await prisma.tenant.create({ data });
 
-  revalidatePath("/dashboard/tenants");
-  return { success: id ? "Tenant updated." : "Tenant created." };
+  revalidatePath(`${base}/dashboard/tenants`);
+  revalidatePath(`${base}/dashboard/tenants/${saved.id}`);
+  return { success: id ? "Tenant updated." : "Tenant created.", id: saved.id };
 }
 
 export async function deleteTenantAction(fd: FormData) {
-  const { session, keys } = await ctx();
+  const { session, keys, base } = await ctx(fd);
   if (session.tenantId !== null || !can(keys, "tenant.delete")) return;
   await prisma.tenant.delete({ where: { id: str(fd, "id") } });
-  revalidatePath("/dashboard/tenants");
+  revalidatePath(`${base}/dashboard/tenants`);
+  redirect(`${base}/dashboard/tenants`);
 }
 
 /* -------------------------------- USERS --------------------------------- */
 
 export async function saveUserAction(_p: ActionState, fd: FormData): Promise<ActionState> {
-  const { session, keys } = await ctx();
+  const { session, keys, base } = await ctx(fd);
   const id = str(fd, "id");
   if (!can(keys, id ? "user.update" : "user.create")) return { error: "You do not have permission." };
 
@@ -120,7 +131,7 @@ export async function saveUserAction(_p: ActionState, fd: FormData): Promise<Act
   const roleIds = fd.getAll("roleIds").map(String).filter(Boolean);
   const locationIds = fd.getAll("locationIds").map(String).filter(Boolean);
 
-  const base = {
+  const fields = {
     firstName: str(fd, "firstName"),
     lastName: str(fd, "lastName"),
     email: str(fd, "email").toLowerCase(),
@@ -130,14 +141,14 @@ export async function saveUserAction(_p: ActionState, fd: FormData): Promise<Act
 
   // On edit, password is optional (blank = keep current)
   const parsed = id && !password
-    ? userSchema.omit({ password: true }).safeParse(base)
-    : userSchema.safeParse({ ...base, password });
+    ? userSchema.omit({ password: true }).safeParse(fields)
+    : userSchema.safeParse({ ...fields, password });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
   // Platform admin creates users with tenant_id = null; tenant users belong to the tenant.
   const tenantId = session.tenantId;
 
-  const dup = await prisma.user.findFirst({ where: { email: base.email, tenantId } });
+  const dup = await prisma.user.findFirst({ where: { email: fields.email, tenantId } });
   if (dup && dup.id !== id) return { error: "A user with that email already exists here." };
 
   if (tenantId) {
@@ -148,9 +159,9 @@ export async function saveUserAction(_p: ActionState, fd: FormData): Promise<Act
   }
 
   const data = {
-    firstName: base.firstName,
-    lastName: base.lastName,
-    email: base.email,
+    firstName: fields.firstName,
+    lastName: fields.lastName,
+    email: fields.email,
     tenantId,
     ...(password ? { passwordHash: await hashPassword(password) } : {}),
   };
@@ -169,25 +180,27 @@ export async function saveUserAction(_p: ActionState, fd: FormData): Promise<Act
       data: locationIds.map((locationId, i) => ({ userId: user.id, locationId, isPrimary: i === 0 })),
     });
 
-  revalidatePath("/dashboard/users");
-  return { success: id ? "User updated." : "User created." };
+  revalidatePath(`${base}/dashboard/users`);
+  revalidatePath(`${base}/dashboard/users/${user.id}`);
+  return { success: id ? "User updated." : "User created.", id: user.id };
 }
 
 export async function deleteUserAction(fd: FormData) {
-  const { session, keys } = await ctx();
+  const { session, keys, base } = await ctx(fd);
   if (!can(keys, "user.delete")) return;
   const id = str(fd, "id");
   if (id === session.sub) return; // cannot delete self
   const target = await prisma.user.findUnique({ where: { id } });
   if (!target || target.tenantId !== session.tenantId) return;
   await prisma.user.delete({ where: { id } });
-  revalidatePath("/dashboard/users");
+  revalidatePath(`${base}/dashboard/users`);
+  redirect(`${base}/dashboard/users`);
 }
 
 /* -------------------------------- ROLES --------------------------------- */
 
 export async function saveRoleAction(_p: ActionState, fd: FormData): Promise<ActionState> {
-  const { session, keys } = await ctx();
+  const { session, keys, base } = await ctx(fd);
   const id = str(fd, "id");
   if (!can(keys, id ? "role.update" : "role.create")) return { error: "You do not have permission." };
 
@@ -226,24 +239,26 @@ export async function saveRoleAction(_p: ActionState, fd: FormData): Promise<Act
       data: permissionIds.map((permissionId) => ({ roleId: role.id, permissionId })),
     });
 
-  revalidatePath("/dashboard/roles");
-  return { success: id ? "Role updated." : "Role created." };
+  revalidatePath(`${base}/dashboard/roles`);
+  revalidatePath(`${base}/dashboard/roles/${role.id}`);
+  return { success: id ? "Role updated." : "Role created.", id: role.id };
 }
 
 export async function deleteRoleAction(fd: FormData) {
-  const { session, keys } = await ctx();
+  const { session, keys, base } = await ctx(fd);
   if (!can(keys, "role.delete")) return;
   const role = await prisma.role.findUnique({ where: { id: str(fd, "id") } });
   if (!role || role.tenantId !== session.tenantId || role.isSystem) return;
   await prisma.role.delete({ where: { id: role.id } });
-  revalidatePath("/dashboard/roles");
+  revalidatePath(`${base}/dashboard/roles`);
+  redirect(`${base}/dashboard/roles`);
 }
 
 /* ----------------------------- PERMISSIONS ------------------------------ */
 /* Only platform admins may add permissions. Tenants can only combine them. */
 
 export async function savePermissionAction(_p: ActionState, fd: FormData): Promise<ActionState> {
-  const { session, keys } = await ctx();
+  const { session, keys, base } = await ctx(fd);
   if (session.tenantId !== null) return { error: "Tenants cannot create permissions." };
   if (!can(keys, "permission.manage")) return { error: "You do not have permission." };
 
@@ -264,14 +279,14 @@ export async function savePermissionAction(_p: ActionState, fd: FormData): Promi
       description: parsed.data.description || null,
     },
   });
-  revalidatePath("/dashboard/permissions");
+  revalidatePath(`${base}/dashboard/permissions`);
   return { success: "Permission created." };
 }
 
 /* ---------------------- BRANCHES / WAREHOUSES --------------------------- */
 
 export async function saveLocationAction(_p: ActionState, fd: FormData): Promise<ActionState> {
-  const { session, keys } = await ctx();
+  const { session, keys, base } = await ctx(fd);
   if (session.tenantId === null) return { error: "Branches are managed inside a tenant workspace." };
   const id = str(fd, "id");
   if (!can(keys, id ? "location.update" : "location.create")) return { error: "You do not have permission." };
@@ -301,18 +316,21 @@ export async function saveLocationAction(_p: ActionState, fd: FormData): Promise
     contactNo: d.contactNo || null,
   };
 
-  if (id) await prisma.location.update({ where: { id }, data });
-  else await prisma.location.create({ data: { ...data, tenantId: session.tenantId } });
+  const saved = id
+    ? await prisma.location.update({ where: { id }, data })
+    : await prisma.location.create({ data: { ...data, tenantId: session.tenantId } });
 
-  revalidatePath("/dashboard/locations");
-  return { success: id ? "Location updated." : "Location created." };
+  revalidatePath(`${base}/dashboard/locations`);
+  revalidatePath(`${base}/dashboard/locations/${saved.id}`);
+  return { success: id ? "Location updated." : "Location created.", id: saved.id };
 }
 
 export async function deleteLocationAction(fd: FormData) {
-  const { session, keys } = await ctx();
+  const { session, keys, base } = await ctx(fd);
   if (!can(keys, "location.delete") || !session.tenantId) return;
   const loc = await prisma.location.findUnique({ where: { id: str(fd, "id") } });
   if (!loc || loc.tenantId !== session.tenantId) return;
   await prisma.location.delete({ where: { id: loc.id } });
-  revalidatePath("/dashboard/locations");
+  revalidatePath(`${base}/dashboard/locations`);
+  redirect(`${base}/dashboard/locations`);
 }

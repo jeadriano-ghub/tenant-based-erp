@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { validateSubdomain } from "./tenant";
+import { validateSlug } from "./tenant";
 
 /** Standard password rules: min 10, upper, lower, digit, special. */
 export const passwordSchema = z
@@ -29,7 +29,7 @@ export const tenantSchema = z.object({
   name: z.string().min(2, "Tenant name is required.").max(120),
   logoUrl: z.string().url("Logo must be a valid URL.").optional().or(z.literal("")),
   subdomain: z.string().superRefine((val, ctx) => {
-    const r = validateSubdomain(val);
+    const r = validateSlug(val);
     if (!r.ok) ctx.addIssue({ code: "custom", message: r.error });
   }),
   type: z.enum(["CORPORATE", "SME", "ENTERPRISE", "GOVERNMENT", "NONPROFIT"]),
