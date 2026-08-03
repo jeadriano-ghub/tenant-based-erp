@@ -26,8 +26,25 @@ export const PERMISSION_CATALOGUE: { key: string; module: string; description: s
 /** Permissions a tenant may assign to its own roles (everything except platform-only keys). */
 export const PLATFORM_ONLY_KEYS = new Set([
   "permission.manage",
+  "permission.view",
+  "tenant.view",
   "tenant.create",
+  "tenant.update",
   "tenant.delete",
 ]);
 
 export const TENANT_ASSIGNABLE = PERMISSION_CATALOGUE.filter((p) => !PLATFORM_ONLY_KEYS.has(p.key));
+
+/** Name of the global system role assigned to every tenant's first admin user. */
+export const TENANT_ADMIN_ROLE = "Tenant Admin";
+
+/**
+ * Permissions granted to the global "Tenant Admin" role. Tenant admins run
+ * their own workspace: users, roles and locations — never the platform
+ * catalogue or other tenants.
+ */
+export const TENANT_ADMIN_KEYS = [
+  "user.view", "user.create", "user.update", "user.delete",
+  "role.view", "role.create", "role.update", "role.delete",
+  "location.view", "location.create", "location.update", "location.delete",
+];

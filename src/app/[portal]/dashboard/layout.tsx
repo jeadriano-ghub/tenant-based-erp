@@ -27,9 +27,10 @@ export default async function DashboardLayout({
   const nav = [
     { href: `${base}/dashboard`, label: "Overview", show: true },
     { href: `${base}/dashboard/tenants`, label: "Tenant Management", show: portal.isAdminPortal && has("tenant.view") },
+    // Tenant users may never see the platform permission catalogue.
     { href: `${base}/dashboard/users`, label: "Manage Users", show: has("user.view") },
     { href: `${base}/dashboard/roles`, label: "Roles", show: has("role.view") },
-    { href: `${base}/dashboard/permissions`, label: "Permissions", show: has("permission.view") },
+    { href: `${base}/dashboard/permissions`, label: "Permissions", show: portal.isAdminPortal && has("permission.view") },
     { href: `${base}/dashboard/locations`, label: "Branch / Warehouse", show: !portal.isAdminPortal && has("location.view") },
   ]
     .filter((n) => n.show)

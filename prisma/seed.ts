@@ -2,7 +2,7 @@ import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
-import { PERMISSION_CATALOGUE } from "../src/lib/permissions";
+import { PERMISSION_CATALOGUE, TENANT_ADMIN_ROLE, TENANT_ADMIN_KEYS } from "../src/lib/permissions";
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
@@ -73,7 +73,31 @@ async function main() {
   });
 
   console.log(`✓ Admin seeded: ${ADMIN_EMAIL} / ${ADMIN_PASSWORD}`);
-  console.log("  tenant_id = NULL -> can ONLY sign in at admin.erp.jra.com");
+  console.log("  tenant_id = NULL -> can ONLY sign in at /admin");
+
+  // 4. Global "Tenant Admin" role (tenantId = NULL, shared by every tenant).
+  //    Kept global on purpose so the platform does not accumulate one
+  //    duplicate admin role per tenant.
+  const tenantAdminRole =
+    (await prisma.role.findFirst({ where: { tenantId: null, name: TENANT_ADMIN_ROLE } })) ??
+    (await prisma.role.create({
+      data: {
+        tenantId: null,
+        name: TENANT_ADMIN_ROLE,
+        description: "Full access within a tenant workspace",
+        isSystem: true,
+      },
+    }));
+
+  const tenantAdminPerms = await prisma.permission.findMany({
+    where: { key: { in: TENANT_ADMIN_KEYS } },
+  });
+  await prisma.rolePermission.deleteMany({ where: { roleId: tenantAdminRole.id } });
+  await prisma.rolePermission.createMany({
+    data: tenantAdminPerms.map((p) => ({ roleId: tenantAdminRole.id, permissionId: p.id })),
+    skipDuplicates: true,
+  });
+  console.log(`✓ ${TENANT_ADMIN_ROLE} role (global, ${tenantAdminPerms.length} permissions)`);
 }
 
 main()

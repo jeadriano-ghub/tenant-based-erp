@@ -7,7 +7,7 @@ import { getPermissionKeys, can, hashPassword, requireSession, resolvePortal } f
 import {
   tenantSchema, userSchema, roleSchema, locationSchema, permissionSchema,
 } from "@/lib/validation";
-import { PLATFORM_ONLY_KEYS } from "@/lib/permissions";
+import { PLATFORM_ONLY_KEYS, TENANT_ADMIN_ROLE, TENANT_ADMIN_KEYS } from "@/lib/permissions";
 
 export type ActionState = { error?: string; success?: string; id?: string };
 
@@ -35,6 +35,19 @@ function toDate(v: FormDataEntryValue | null) {
 }
 function str(fd: FormData, k: string) {
   return String(fd.get(k) ?? "").trim();
+}
+
+/** Temporary password that satisfies the standard password policy. */
+function generatePassword() {
+  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lower = "abcdefghijkmnopqrstuvwxyz";
+  const digits = "23456789";
+  const special = "!@#$%^&*";
+  const all = upper + lower + digits + special;
+  const pick = (set: string) => set[Math.floor(Math.random() * set.length)];
+  const chars = [pick(upper), pick(lower), pick(digits), pick(special)];
+  while (chars.length < 14) chars.push(pick(all));
+  return chars.sort(() => Math.random() - 0.5).join("");
 }
 
 /* ------------------------------- TENANTS -------------------------------- */
@@ -103,13 +116,64 @@ export async function saveTenantAction(_p: ActionState, fd: FormData): Promise<A
     status: d.status,
   };
 
-  const saved = id
-    ? await prisma.tenant.update({ where: { id }, data })
-    : await prisma.tenant.create({ data });
+  if (id) {
+    const saved = await prisma.tenant.update({ where: { id }, data });
+    revalidatePath(`${base}/dashboard/tenants`);
+    revalidatePath(`${base}/dashboard/tenants/${saved.id}`);
+    return { success: "Tenant updated.", id: saved.id };
+  }
+
+  // Creating a tenant also provisions its first administrator. The generated
+  // password is returned once so the platform admin can hand it over.
+  const tempPassword = generatePassword();
+  const passwordHash = await hashPassword(tempPassword);
+
+  const saved = await prisma.$transaction(async (tx) => {
+    const tenant = await tx.tenant.create({ data });
+
+    // The "Tenant Admin" role is global (tenantId NULL) and shared by every
+    // tenant, so a large tenant count does not multiply admin roles.
+    let adminRole = await tx.role.findFirst({
+      where: { tenantId: null, name: TENANT_ADMIN_ROLE },
+    });
+    if (!adminRole) {
+      adminRole = await tx.role.create({
+        data: {
+          tenantId: null,
+          name: TENANT_ADMIN_ROLE,
+          description: "Full access within a tenant workspace",
+          isSystem: true,
+        },
+      });
+      const perms = await tx.permission.findMany({ where: { key: { in: TENANT_ADMIN_KEYS } } });
+      await tx.rolePermission.createMany({
+        data: perms.map((pm) => ({ roleId: adminRole!.id, permissionId: pm.id })),
+        skipDuplicates: true,
+      });
+    }
+
+    const adminUser = await tx.user.create({
+      data: {
+        tenantId: tenant.id,
+        firstName: d.contactPerson.split(" ")[0] || "Tenant",
+        lastName: d.contactPerson.split(" ").slice(1).join(" ") || "Admin",
+        email: d.email.toLowerCase(),
+        passwordHash,
+        isSuperAdmin: false,
+        status: "ACTIVE",
+      },
+    });
+
+    await tx.userRole.create({ data: { userId: adminUser.id, roleId: adminRole.id } });
+    return tenant;
+  });
 
   revalidatePath(`${base}/dashboard/tenants`);
   revalidatePath(`${base}/dashboard/tenants/${saved.id}`);
-  return { success: id ? "Tenant updated." : "Tenant created.", id: saved.id };
+  return {
+    success: `Tenant created. Admin login: ${d.email.toLowerCase()} · temporary password: ${tempPassword}`,
+    id: saved.id,
+  };
 }
 
 export async function deleteTenantAction(fd: FormData) {
@@ -203,6 +267,13 @@ export async function saveRoleAction(_p: ActionState, fd: FormData): Promise<Act
   const { session, keys, base } = await ctx(fd);
   const id = str(fd, "id");
   if (!can(keys, id ? "role.update" : "role.create")) return { error: "You do not have permission." };
+
+  // Tenants may not edit global system roles (e.g. the shared "Tenant Admin" role).
+  if (id && session.tenantId) {
+    const existing = await prisma.role.findUnique({ where: { id } });
+    if (!existing || existing.tenantId !== session.tenantId)
+      return { error: "This role cannot be modified from a tenant workspace." };
+  }
 
   const permissionIds = fd.getAll("permissionIds").map(String).filter(Boolean);
   const parsed = roleSchema.safeParse({

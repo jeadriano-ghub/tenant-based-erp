@@ -13,6 +13,8 @@ export default async function PermissionsPage({ params }: { params: Promise<{ po
   if (!session) redirect(`${portal.base}/login`);
   const keys = await getPermissionKeys(session.sub, session.isSuperAdmin);
   if (!can(keys, "permission.view")) redirect(`${portal.base}/dashboard`);
+  // Tenant users never see the platform permission catalogue.
+  if (!portal.isAdminPortal) notFound();
   const isAdminPortal = portal.isAdminPortal;
 
   const permissions = await prisma.permission.findMany({ orderBy: [{ module: "asc" }, { key: "asc" }] });

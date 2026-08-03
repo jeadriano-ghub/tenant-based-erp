@@ -17,7 +17,12 @@ export default async function RolesPage({ params }: { params: Promise<{ portal: 
   const isAdminPortal = portal.isAdminPortal;
 
   const roles = await prisma.role.findMany({
-    where: { tenantId: session.tenantId },
+    where: {
+      // Tenants see their own roles plus the global "Tenant Admin" system
+      // role they can assign to their users. The platform "Super Administrator"
+      // role is hidden from tenants — it is admin-portal only.
+      OR: [{ tenantId: session.tenantId }, { name: "Tenant Admin", tenantId: null, isSystem: true }],
+    },
     orderBy: { name: "asc" },
     include: { permissions: true, _count: { select: { users: true } } },
   });

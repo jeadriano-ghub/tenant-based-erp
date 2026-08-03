@@ -51,6 +51,7 @@ export async function loginAction(
     sub: user.id,
     email: user.email,
     tenantId: user.tenantId,
+    tenantSlug: portal.isAdminPortal ? null : portal.tenant.slug,
     isSuperAdmin: user.isSuperAdmin,
     name: `${user.firstName} ${user.lastName}`,
   });

@@ -14,6 +14,7 @@ export type SessionPayload = {
   sub: string;
   email: string;
   tenantId: string | null;
+  tenantSlug: string | null; // null for platform admins
   isSuperAdmin: boolean;
   name: string;
 };
@@ -101,11 +102,10 @@ export async function requireSession(portal: Portal) {
   const session = await getSession();
   if (!session) return { session: null as null, error: "UNAUTHENTICATED" as const };
 
-  if (portal.isAdminPortal) {
-    if (session.tenantId !== null) return { session: null, error: "WRONG_PORTAL" as const };
-  } else {
-    if (session.tenantId !== portal.tenant.id) return { session: null, error: "WRONG_PORTAL" as const };
-  }
+  const belongs = portal.isAdminPortal
+    ? session.tenantId === null
+    : session.tenantId === portal.tenant.id;
+  if (!belongs) return { session: null, error: "WRONG_PORTAL" as const };
   return { session, error: null };
 }
 
