@@ -22,6 +22,7 @@ export default async function NewUserPage({ params }: { params: Promise<{ portal
   const roles = await prisma.role.findMany({
     where: { OR: [{ tenantId: session.tenantId }, { name: "Tenant Admin", tenantId: null, isSystem: true }] },
     orderBy: { name: "asc" },
+    include: { permissions: { include: { permission: true } } },
   });
   const locations = session.tenantId
     ? await prisma.location.findMany({ where: { tenantId: session.tenantId }, orderBy: { code: "asc" } })
@@ -40,7 +41,12 @@ export default async function NewUserPage({ params }: { params: Promise<{ portal
           submitLabel="Create user"
           cancelHref={`${portal.base}/dashboard/users`}
           redirectOnSuccess={`${portal.base}/dashboard/users`}
-          roles={roles}
+          roles={roles.map((r) => ({
+            id: r.id,
+            name: r.name,
+            description: r.description,
+            permissions: r.permissions.map((p) => p.permission.key),
+          }))}
           locations={locations}
           isAdminPortal={isAdminPortal}
         />

@@ -28,6 +28,7 @@ export default async function EditUserPage({ params }: { params: Promise<{ porta
   const roles = await prisma.role.findMany({
     where: { OR: [{ tenantId: session.tenantId }, { name: "Tenant Admin", tenantId: null, isSystem: true }] },
     orderBy: { name: "asc" },
+    include: { permissions: { include: { permission: true } } },
   });
   const locations = session.tenantId
     ? await prisma.location.findMany({ where: { tenantId: session.tenantId }, orderBy: { code: "asc" } })
@@ -54,7 +55,12 @@ export default async function EditUserPage({ params }: { params: Promise<{ porta
           submitLabel="Save changes"
           cancelHref={`${portal.base}/dashboard/users/${u.id}`}
           redirectOnSuccess={`${portal.base}/dashboard/users/${u.id}`}
-          roles={roles}
+          roles={roles.map((r) => ({
+            id: r.id,
+            name: r.name,
+            description: r.description,
+            permissions: r.permissions.map((p) => p.permission.key),
+          }))}
           locations={locations}
           isAdminPortal={isAdminPortal}
           isEdit

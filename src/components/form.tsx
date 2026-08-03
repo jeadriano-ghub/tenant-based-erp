@@ -134,7 +134,7 @@ export function CheckboxGroup({
   name, items, selected = [], emptyText = "Nothing available yet.",
 }: {
   name: string;
-  items: { id: string; label: string; sub?: string; disabled?: boolean }[];
+  items: { id: string; label: string; sub?: string; hint?: string; disabled?: boolean }[];
   selected?: string[];
   emptyText?: string;
 }) {
@@ -156,6 +156,11 @@ export function CheckboxGroup({
           <span className="min-w-0">
             <span className="block text-sm font-medium leading-tight">{it.label}</span>
             {it.sub && <span className="mt-0.5 block text-xs text-[var(--muted)]">{it.sub}</span>}
+            {it.hint && (
+              <span className="mt-1 block text-[11px] leading-snug text-[var(--brand)]/80">
+                {it.hint}
+              </span>
+            )}
           </span>
         </label>
       ))}

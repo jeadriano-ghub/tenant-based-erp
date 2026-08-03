@@ -21,7 +21,7 @@ export function UserForm({
   submitLabel: string;
   cancelHref: string;
   redirectOnSuccess?: string;
-  roles: { id: string; name: string; description: string | null }[];
+  roles: { id: string; name: string; description: string | null; permissions?: string[] }[];
   locations: { id: string; code: string; name: string; type: string }[];
   isAdminPortal: boolean;
   isEdit?: boolean;
@@ -60,7 +60,7 @@ export function UserForm({
           <CheckboxGroup
             name="roleIds"
             selected={values.roleIds}
-            items={roles.map((r) => ({ id: r.id, label: r.name, sub: r.description ?? undefined }))}
+            items={roles.map((r) => ({ id: r.id, label: r.name, sub: r.description ?? undefined, hint: r.permissions?.length ? r.permissions.join(", ") : undefined }))}
             emptyText="No roles defined yet. Create a role first."
           />
         </div>
