@@ -54,6 +54,7 @@ export default async function DashboardLayout({
       title={portal.isAdminPortal ? "JRA ERP" : portal.tenant.name}
       subtitle={`${ROOT_DOMAIN}/${portal.slug}`}
       logoUrl={portal.isAdminPortal ? null : portal.tenant.logoUrl}
+      defaultLogoUrl={process.env.NEXT_PUBLIC_DEFAULT_LOGO || null}
       user={{ name: session.name, email: session.email, isSuperAdmin: session.isSuperAdmin }}
       signOut={signOut}
     >

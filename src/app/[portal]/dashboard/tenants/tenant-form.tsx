@@ -2,6 +2,7 @@ import { ActionForm, Field, Select } from "@/components/form";
 import { FormSection } from "@/components/ui";
 import { ROOT_DOMAIN } from "@/lib/tenant";
 import type { ActionState } from "../actions";
+import { LogoUploadField } from "./logo-upload-field";
 
 const TYPES = ["CORPORATE", "SME", "ENTERPRISE", "GOVERNMENT", "NONPROFIT"] as const;
 const CYCLES = ["MONTHLY", "QUARTERLY", "SEMI_ANNUAL", "ANNUAL"] as const;
@@ -47,7 +48,7 @@ export function TenantForm({
           label="Tenant URL" name="subdomain" required defaultValue={values.subdomain}
           placeholder="acme" hint={`3-63 chars · a-z, 0-9, hyphens · ${ROOT_DOMAIN}/[tenant]`}
         />
-        <Field label="Logo URL" name="logoUrl" defaultValue={values.logoUrl} placeholder="https://…/logo.png" span />
+        <LogoUploadField portal={portal} subdomain={values.subdomain} defaultValue={values.logoUrl} />
         <Select label="Tenant type" name="type" options={TYPES} defaultValue={values.type} required />
         <Select label="Status" name="status" options={STATUSES} defaultValue={values.status} required />
       </FormSection>

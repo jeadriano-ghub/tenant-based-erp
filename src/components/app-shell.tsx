@@ -52,12 +52,17 @@ function NavLinks({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => 
   );
 }
 
-function Brand({ title, subtitle, logoUrl }: { title: string; subtitle: string; logoUrl?: string | null }) {
+function Brand({
+  title, subtitle, logoUrl, defaultLogoUrl,
+}: {
+  title: string; subtitle: string; logoUrl?: string | null; defaultLogoUrl?: string | null;
+}) {
+  const shown = logoUrl || defaultLogoUrl;
   return (
     <div className="flex items-center gap-3">
-      {logoUrl ? (
+      {shown ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={logoUrl} alt="" className="h-9 w-9 shrink-0 rounded-lg object-contain" />
+        <img src={shown} alt="" className="h-9 w-9 shrink-0 rounded-lg object-contain" />
       ) : (
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--brand)] text-xs font-bold text-white">
           JRA
@@ -72,12 +77,13 @@ function Brand({ title, subtitle, logoUrl }: { title: string; subtitle: string; 
 }
 
 export function AppShell({
-  nav, title, subtitle, logoUrl, user, signOut, children,
+  nav, title, subtitle, logoUrl, defaultLogoUrl, user, signOut, children,
 }: {
   nav: NavItem[];
   title: string;
   subtitle: string;
   logoUrl?: string | null;
+  defaultLogoUrl?: string | null;
   user: { name: string; email: string; isSuperAdmin: boolean };
   signOut: React.ReactNode;
   children: React.ReactNode;
@@ -108,7 +114,7 @@ export function AppShell({
     <div className="flex min-h-screen">
       {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-[var(--surface)] lg:flex">
-        <div className="border-b px-4 py-4"><Brand title={title} subtitle={subtitle} logoUrl={logoUrl} /></div>
+        <div className="border-b px-4 py-4"><Brand title={title} subtitle={subtitle} logoUrl={logoUrl} defaultLogoUrl={defaultLogoUrl} /></div>
         <div className="flex-1 overflow-y-auto p-3"><NavLinks items={nav} /></div>
         {userBlock}
       </aside>
@@ -123,7 +129,7 @@ export function AppShell({
           />
           <div className="absolute inset-y-0 left-0 flex w-[17rem] flex-col bg-[var(--surface)] shadow-2xl">
             <div className="flex items-center justify-between border-b px-4 py-4">
-              <Brand title={title} subtitle={subtitle} logoUrl={logoUrl} />
+              <Brand title={title} subtitle={subtitle} logoUrl={logoUrl} defaultLogoUrl={defaultLogoUrl} />
               <button onClick={() => setOpen(false)} aria-label="Close menu" className="rounded-lg p-1.5 text-[var(--muted)] hover:bg-[var(--background)]">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
                   <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
@@ -148,7 +154,7 @@ export function AppShell({
               <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
             </svg>
           </button>
-          <Brand title={title} subtitle={subtitle} logoUrl={logoUrl} />
+          <Brand title={title} subtitle={subtitle} logoUrl={logoUrl} defaultLogoUrl={defaultLogoUrl} />
         </header>
 
         <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
