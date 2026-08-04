@@ -64,7 +64,24 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ p
             { label: "Tenant name", value: t.name },
             { label: "Workspace URL", value: <code className="rounded bg-[var(--background)] px-1.5 py-0.5 text-xs">{ROOT_DOMAIN}/{t.subdomain}</code> },
             { label: "Tenant type", value: t.type },
-            { label: "Logo URL", value: t.logoUrl },
+            {
+              label: "Logo",
+              value: t.logoUrl ? (
+                <div className="flex flex-col gap-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={t.logoUrl}
+                    alt={`${t.name} logo`}
+                    className="h-14 w-14 rounded-lg border bg-[var(--background)] object-contain"
+                  />
+                  <a className="text-xs text-[var(--brand)] hover:underline break-all" href={t.logoUrl} target="_blank" rel="noreferrer">
+                    {t.logoUrl}
+                  </a>
+                </div>
+              ) : (
+                <span className="text-[var(--muted)]">No logo</span>
+              ),
+            },
           ]}
         />
       </Card>
