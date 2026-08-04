@@ -21,7 +21,6 @@ export default async function LoginPage({ params }: { params: Promise<{ portal: 
   const title = portal.isAdminPortal ? "Platform Administration" : portal.tenant.name;
   const subtitle = `${ROOT_DOMAIN}/${portal.slug}`;
   const logoUrl = portal.isAdminPortal ? null : portal.tenant.logoUrl;
-  const inactive = !portal.isAdminPortal && portal.tenant.status !== "ACTIVE";
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-[var(--background)] px-4 py-10">
@@ -40,13 +39,7 @@ export default async function LoginPage({ params }: { params: Promise<{ portal: 
         </div>
 
         <div className="rounded-[var(--radius)] border bg-[var(--surface)] p-6 shadow-sm">
-          {inactive ? (
-            <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-400">
-              This workspace is {portal.tenant.status.toLowerCase()}. Contact your platform administrator.
-            </p>
-          ) : (
-            <LoginForm portal={portal.slug} label={portal.isAdminPortal ? "Admin" : portal.tenant.name} />
-          )}
+          <LoginForm portal={portal.slug} label={portal.isAdminPortal ? "Admin" : portal.tenant.name} />
         </div>
 
         <p className="mt-6 text-center text-xs leading-relaxed text-[var(--muted)]">

@@ -62,12 +62,30 @@ export async function getSession(): Promise<SessionPayload | null> {
 
 export type Portal =
   | { isAdminPortal: true; slug: "admin"; tenant: null; base: "/admin" }
-  | { isAdminPortal: false; slug: string; tenant: { id: string; name: string; slug: string; logoUrl: string | null; status: string }; base: string };
+  | {
+      isAdminPortal: false;
+      slug: string;
+      tenant: {
+        id: string;
+        name: string;
+        slug: string;
+        logoUrl: string | null;
+        status: string;
+        subscriptionEnd: string | null;
+        blocked: boolean;
+        blockReason: "inactive" | "expired" | null;
+      };
+      base: string;
+    };
 
 /**
  * Resolves the portal from the first URL segment.
  * Returns null when the segment is not "admin" and no tenant matches — the
  * caller is expected to render notFound().
+ *
+ * A tenant is considered blocked (and its entire workspace 404s) when its
+ * status is not ACTIVE, or its subscription has expired (subscriptionEnd in the
+ * past). The block reason is surfaced so the 404 screen can explain why.
  */
 export async function resolvePortal(slug: string): Promise<Portal | null> {
   const value = (slug ?? "").toLowerCase();
@@ -79,6 +97,17 @@ export async function resolvePortal(slug: string): Promise<Portal | null> {
   const tenant = await prisma.tenant.findUnique({ where: { subdomain: value } });
   if (!tenant) return null;
 
+  const now = Date.now();
+  const expired =
+    tenant.subscriptionEnd != null && new Date(tenant.subscriptionEnd).getTime() < now;
+  const inactive = tenant.status !== "ACTIVE";
+  const blocked = inactive || expired;
+  const blockReason: "inactive" | "expired" | null = inactive
+    ? "inactive"
+    : expired
+      ? "expired"
+      : null;
+
   return {
     isAdminPortal: false,
     slug: tenant.subdomain,
@@ -88,6 +117,9 @@ export async function resolvePortal(slug: string): Promise<Portal | null> {
       slug: tenant.subdomain,
       logoUrl: tenant.logoUrl,
       status: tenant.status,
+      subscriptionEnd: tenant.subscriptionEnd ? tenant.subscriptionEnd.toISOString() : null,
+      blocked,
+      blockReason,
     },
     base: `/${tenant.subdomain}`,
   };
