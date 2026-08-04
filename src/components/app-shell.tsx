@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 export type NavItem = { href: string; label: string };
 
@@ -76,6 +76,68 @@ function Brand({
   );
 }
 
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function Profile({ user }: { user: { name: string; email: string; isSuperAdmin: boolean } }) {
+  return (
+    <div className="flex items-center gap-2.5 rounded-lg px-1">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--brand)] text-sm font-semibold text-white" aria-hidden>
+        {initialsOf(user.name)}
+      </div>
+      <div className="hidden min-w-0 sm:block">
+        <p className="truncate text-sm font-medium leading-tight">{user.name}</p>
+        <p className="truncate text-xs text-[var(--muted)] leading-tight">{user.email}</p>
+      </div>
+    </div>
+  );
+}
+
+function SignOutControl({ signOut }: { signOut: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="rounded-lg border px-3 py-2 text-sm font-medium transition-colors hover:bg-[var(--background)]"
+      >
+        Sign out
+      </button>
+      {open && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl border bg-[var(--surface)] p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-semibold">Sign out?</h3>
+            <p className="mt-1 text-sm text-[var(--muted)]">
+              You&rsquo;ll need to log in again to access your workspace.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="rounded-lg border px-3 py-2 text-sm font-medium transition-colors hover:bg-[var(--background)]"
+              >
+                Cancel
+              </button>
+              {signOut}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export function AppShell({
   nav, title, subtitle, logoUrl, defaultLogoUrl, user, signOut, bell, children,
 }: {
@@ -85,9 +147,9 @@ export function AppShell({
   logoUrl?: string | null;
   defaultLogoUrl?: string | null;
   user: { name: string; email: string; isSuperAdmin: boolean };
-  signOut: React.ReactNode;
-  bell?: React.ReactNode;
-  children: React.ReactNode;
+  signOut: ReactNode;
+  bell?: ReactNode;
+  children: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -96,31 +158,22 @@ export function AppShell({
     return () => { document.body.style.overflow = ""; };
   }, [open]);
 
-  const userBlock = (
-    <div className="border-t p-3">
-      <div className="mb-2 px-2">
-        <p className="truncate text-sm font-medium">{user.name}</p>
-        <p className="truncate text-xs text-[var(--muted)]">{user.email}</p>
-        {user.isSuperAdmin && (
-          <span className="mt-1.5 inline-flex rounded-md bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
-            SUPER ADMIN
-          </span>
-        )}
-      </div>
-      {signOut}
+  const headerControls = (
+    <div className="flex items-center gap-2">
+      {bell}
+      <Profile user={user} />
+      <SignOutControl signOut={signOut} />
     </div>
   );
 
   return (
     <div className="flex min-h-screen">
-      {/* Desktop sidebar */}
+      {/* Desktop sidebar (brand + nav only) */}
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-[var(--surface)] lg:flex">
-        <div className="flex items-center justify-between border-b px-4 py-4">
+        <div className="border-b px-4 py-4">
           <Brand title={title} subtitle={subtitle} logoUrl={logoUrl} defaultLogoUrl={defaultLogoUrl} />
-          {bell}
         </div>
         <div className="flex-1 overflow-y-auto p-3"><NavLinks items={nav} /></div>
-        {userBlock}
       </aside>
 
       {/* Mobile drawer */}
@@ -141,12 +194,17 @@ export function AppShell({
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-3"><NavLinks items={nav} onNavigate={() => setOpen(false)} /></div>
-            {userBlock}
           </div>
         </div>
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
+        {/* Desktop top header (controls live here, not in the side menu) */}
+        <header className="sticky top-0 z-30 hidden items-center justify-between border-b bg-[var(--surface)]/90 px-6 py-3 backdrop-blur lg:flex">
+          <span className="text-sm text-[var(--muted)]">{title}</span>
+          {headerControls}
+        </header>
+
         {/* Mobile top bar */}
         <header className="sticky top-0 z-30 flex items-center gap-3 border-b bg-[var(--surface)]/90 px-4 py-3 backdrop-blur lg:hidden">
           <button
@@ -159,7 +217,7 @@ export function AppShell({
             </svg>
           </button>
           <Brand title={title} subtitle={subtitle} logoUrl={logoUrl} defaultLogoUrl={defaultLogoUrl} />
-          {bell}
+          <div className="ml-auto">{headerControls}</div>
         </header>
 
         <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
