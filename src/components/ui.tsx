@@ -137,7 +137,7 @@ export function LinkButton({
   );
 }
 
-export function Badge({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "success" | "warning" | "danger" | "brand" }) {
+export function Badge({ children, tone = "neutral", className = "" }: { children: ReactNode; tone?: "neutral" | "success" | "warning" | "danger" | "brand"; className?: string }) {
   const tones = {
     neutral: "bg-[var(--background)] text-[var(--muted)] border",
     success: "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900",
@@ -146,7 +146,7 @@ export function Badge({ children, tone = "neutral" }: { children: ReactNode; ton
     brand: "bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-900",
   } as const;
   return (
-    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ${tones[tone]}`}>
+    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ${tones[tone]} ${className}`}>
       {children}
     </span>
   );

@@ -82,6 +82,7 @@ model Tenant {
   users     User[]
   roles     Role[]
   locations Location[]
+  notifications Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -104,6 +105,7 @@ model User {
 
   roles     UserRole[]
   locations UserLocation[]
+  notifications Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -188,4 +190,29 @@ model UserLocation {
   location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
   @@id([userId, locationId])
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+}
+
+// Notifications are scoped by tenantId: NULL = platform/admin, otherwise the
+// tenant that owns them. A notification is never visible outside its tenant.
+model Notification {
+  id         String           @id @default(cuid())
+  tenantId   String? // NULL => platform/admin notifications
+  tenant     Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  recipientId String? // NULL => broadcast to everyone in the tenant
+  recipient  User?            @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  title      String
+  message    String
+  type       NotificationType @default(INFO)
+  read       Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+
+  @@index([tenantId])
+  @@index([recipientId])
 }

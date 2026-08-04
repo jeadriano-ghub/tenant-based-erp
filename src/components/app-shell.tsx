@@ -77,7 +77,7 @@ function Brand({
 }
 
 export function AppShell({
-  nav, title, subtitle, logoUrl, defaultLogoUrl, user, signOut, children,
+  nav, title, subtitle, logoUrl, defaultLogoUrl, user, signOut, bell, children,
 }: {
   nav: NavItem[];
   title: string;
@@ -86,6 +86,7 @@ export function AppShell({
   defaultLogoUrl?: string | null;
   user: { name: string; email: string; isSuperAdmin: boolean };
   signOut: React.ReactNode;
+  bell?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -114,7 +115,10 @@ export function AppShell({
     <div className="flex min-h-screen">
       {/* Desktop sidebar */}
       <aside className="hidden w-64 shrink-0 flex-col border-r bg-[var(--surface)] lg:flex">
-        <div className="border-b px-4 py-4"><Brand title={title} subtitle={subtitle} logoUrl={logoUrl} defaultLogoUrl={defaultLogoUrl} /></div>
+        <div className="flex items-center justify-between border-b px-4 py-4">
+          <Brand title={title} subtitle={subtitle} logoUrl={logoUrl} defaultLogoUrl={defaultLogoUrl} />
+          {bell}
+        </div>
         <div className="flex-1 overflow-y-auto p-3"><NavLinks items={nav} /></div>
         {userBlock}
       </aside>
@@ -155,6 +159,7 @@ export function AppShell({
             </svg>
           </button>
           <Brand title={title} subtitle={subtitle} logoUrl={logoUrl} defaultLogoUrl={defaultLogoUrl} />
+          {bell}
         </header>
 
         <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">

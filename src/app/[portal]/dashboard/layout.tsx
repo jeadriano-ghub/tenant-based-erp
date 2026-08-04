@@ -3,6 +3,7 @@ import { requireSession, getPermissionKeys, resolvePortal } from "@/lib/auth";
 import { ROOT_DOMAIN } from "@/lib/tenant";
 import { AppShell } from "@/components/app-shell";
 import { logoutAction } from "../../(auth)/actions";
+import { NotificationBell } from "./notifications/bell";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +56,7 @@ export default async function DashboardLayout({
       subtitle={`${ROOT_DOMAIN}/${portal.slug}`}
       logoUrl={portal.isAdminPortal ? null : portal.tenant.logoUrl}
       defaultLogoUrl={process.env.NEXT_PUBLIC_DEFAULT_LOGO || null}
+      bell={<NotificationBell portal={portal.slug} />}
       user={{ name: session.name, email: session.email, isSuperAdmin: session.isSuperAdmin }}
       signOut={signOut}
     >
