@@ -4,6 +4,57 @@ import type { NotificationType } from "@/generated/prisma";
 /** Fields we never surface in an audit/notification diff. */
 const SENSITIVE = new Set(["passwordHash", "password"]);
 
+/**
+ * Columns that are system metadata, not meaningful "changes" to a human
+ * (IDs, timestamps, internal flags).
+ */
+const IGNORE = new Set([
+  "id",
+  "tenantId",
+  "createdAt",
+  "updatedAt",
+  "lastLoginAt",
+  "isSuperAdmin",
+  "passwordHash",
+  "password",
+]);
+
+/** Human-friendly labels for known fields. */
+const FIELD_LABELS: Record<string, string> = {
+  firstName: "First name",
+  lastName: "Last name",
+  email: "Email",
+  contactPerson: "Contact person",
+  contactNo: "Contact number",
+  companyName: "Company name",
+  businessRegNo: "Business reg. no.",
+  addressLine1: "Address line 1",
+  addressLine2: "Address line 2",
+  postalCode: "Postal code",
+  stateProvince: "State/Province",
+  website: "Website",
+  subscriptionStart: "Subscription start",
+  subscriptionEnd: "Subscription end",
+  billingCycle: "Billing cycle",
+  paymentMethod: "Payment method",
+  type: "Type",
+  industry: "Industry",
+  tin: "TIN",
+  country: "Country",
+  city: "City",
+  status: "Status",
+  name: "Name",
+  description: "Description",
+  code: "Code",
+  address: "Address",
+  key: "Key",
+  module: "Module",
+  isSystem: "System role",
+  permissionIds: "Permissions",
+  roleIds: "Roles",
+  locationIds: "Branches",
+};
+
 type AnyRecord = Record<string, unknown>;
 
 /** Strip secrets and null-ify empties for a cleaner before/after diff. */
@@ -15,6 +66,30 @@ function clean(obj: AnyRecord | null | undefined): AnyRecord | null {
     out[k] = v === "" ? null : v;
   }
   return out;
+}
+
+function label(k: string): string {
+  return FIELD_LABELS[k] ?? k.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase()).trim();
+}
+
+/** Render a value for display: dates become localized, objects become JSON. */
+function formatVal(v: unknown): string {
+  if (v === null || v === undefined || v === "") return "removed";
+  if (v instanceof Date) return v.toLocaleString();
+  if (typeof v === "boolean") return v ? "yes" : "no";
+  if (typeof v === "object") {
+    try {
+      const s = JSON.stringify(v);
+      return s.length > 60 ? s.slice(0, 57) + "…" : s;
+    } catch {
+      return String(v);
+    }
+  }
+  if (typeof v === "string" && /\d{4}-\d{2}-\d{2}T/.test(v)) {
+    const d = new Date(v);
+    if (!isNaN(d.getTime())) return d.toLocaleString();
+  }
+  return String(v);
 }
 
 export type ChangeInput = {
@@ -35,9 +110,9 @@ export type ChangeInput = {
  */
 export async function recordChange(input: ChangeInput): Promise<void> {
   const verb = input.action === "CREATE" ? "created" : input.action === "UPDATE" ? "updated" : "deleted";
-  const label = input.entityName ? `${input.entity} "${input.entityName}"` : input.entity;
-  const title = `${label} ${verb}`;
-  const message = buildSummary(input);
+  const labelText = input.entityName ? `${input.entity} "${input.entityName}"` : input.entity;
+  const title = `${labelText} ${verb}`;
+  const message = buildSummary(input, 3); // short form for the bell
 
   // Fire-and-forget: an audit/notification failure must not break the mutation.
   try {
@@ -71,32 +146,40 @@ export async function recordChange(input: ChangeInput): Promise<void> {
   }
 }
 
-/** Produce a short human-readable summary of changed fields. */
-function buildSummary(input: ChangeInput): string {
-  if (input.action === "CREATE") {
-    return `New ${input.entity.toLowerCase()} was added.`;
-  }
-  if (input.action === "DELETE") {
-    return `The ${input.entity.toLowerCase()} was removed.`;
-  }
+/** Build the list of human-readable field changes, ignoring system columns. */
+function diffLines(input: ChangeInput): string[] {
   const before = clean(input.before);
   const after = clean(input.after);
-  if (!before || !after) return `${input.entity} was updated.`;
-  const changed: string[] = [];
+  if (!before || !after) return [];
   const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+  const lines: string[] = [];
   for (const k of keys) {
-    const b = JSON.stringify(before[k] ?? null);
-    const a = JSON.stringify(after[k] ?? null);
-    if (b !== a) changed.push(k);
+    if (IGNORE.has(k)) continue;
+    const b = before[k] ?? null;
+    const a = after[k] ?? null;
+    if (JSON.stringify(b) === JSON.stringify(a)) continue;
+    lines.push(`${label(k)}: ${formatVal(b)} → ${formatVal(a)}`);
   }
-  if (changed.length === 0) return `${input.entity} was updated (no field changes).`;
-  const parts = changed.slice(0, 6).map((k) => {
-    const b = before[k];
-    const a = after[k];
-    const fmt = (v: unknown) => (v === null || v === undefined || v === "" ? "(empty)" : String(v));
-    return `${k}: ${fmt(b)} → ${fmt(a)}`;
-  });
-  let summary = parts.join("; ");
-  if (changed.length > 6) summary += ` (+${changed.length - 6} more)`;
+  return lines;
+}
+
+/**
+ * Produce a human-readable summary of the change.
+ * @param max visible field changes before truncating (0 = no cap)
+ */
+export function buildSummary(input: ChangeInput, max = 0): string {
+  if (input.action === "CREATE") {
+    const name = input.entityName ? ` "${input.entityName}"` : "";
+    return `New ${input.entity.toLowerCase()}${name} was added.`;
+  }
+  if (input.action === "DELETE") {
+    const name = input.entityName ? ` "${input.entityName}"` : "";
+    return `The ${input.entity.toLowerCase()}${name} was removed.`;
+  }
+  const lines = diffLines(input);
+  if (lines.length === 0) return `${input.entity} was updated (no field changes).`;
+  const shown = max > 0 ? lines.slice(0, max) : lines;
+  let summary = shown.join("; ");
+  if (max > 0 && lines.length > max) summary += ` (+${lines.length - max} more)`;
   return summary;
 }
