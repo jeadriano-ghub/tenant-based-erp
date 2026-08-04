@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { Prisma } from "@/generated/prisma";
 import { requireSession, resolvePortal } from "@/lib/auth";
 import { PageHeader, Card, Badge, EmptyState } from "@/components/ui";
 import { buildSummary } from "@/lib/audit";
+import { AuditFilters } from "./filters";
 
 export const dynamic = "force-dynamic";
 
@@ -12,28 +14,100 @@ const actionTone: Record<string, "neutral" | "success" | "warning" | "danger" | 
   DELETE: "danger",
 };
 
-export default async function AuditLogPage({ params }: { params: Promise<{ portal: string }> }) {
+const ENTITIES = ["Tenant", "User", "Role", "Location", "Permission"];
+
+export default async function AuditLogPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ portal: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   const { portal: slug } = await params;
   const portal = await resolvePortal(slug);
   if (!portal) redirect("/admin/login");
   const { session } = await requireSession(portal);
   if (!session) redirect(`${portal.base}/login`);
 
-  // Tenant-scoped: only this tenant's history. Admin sees platform-only.
-  const logs = await prisma.auditLog.findMany({
-    where: { tenantId: session.tenantId },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-    include: { actor: { select: { firstName: true, lastName: true, email: true } } },
-  });
+  const sp = await searchParams;
+  const p = {
+    entity: sp.entity ?? "",
+    action: sp.action ?? "",
+    actor: sp.actor ?? "",
+    from: sp.from ?? "",
+    to: sp.to ?? "",
+    q: sp.q ?? "",
+  };
+
+  // Build the tenant-scoped query (portal isolation preserved).
+  const where: Prisma.AuditLogWhereInput = { tenantId: session.tenantId };
+  if (p.entity) where.entity = p.entity;
+  if (p.action) where.action = p.action as Prisma.AuditLogWhereInput["action"];
+  if (p.actor) where.actorId = p.actor;
+  if (p.from || p.to) {
+    const createdAt: Prisma.DateTimeFilter = {};
+    if (p.from) { const d = new Date(p.from + "T00:00:00"); if (!isNaN(d.getTime())) createdAt.gte = d; }
+    if (p.to) { const d = new Date(p.to + "T23:59:59.999"); if (!isNaN(d.getTime())) createdAt.lte = d; }
+    if (Object.keys(createdAt).length) where.createdAt = createdAt;
+  }
+  if (p.q) {
+    const q = p.q;
+    where.OR = [
+      { entity: { contains: q, mode: "insensitive" } },
+      { entityName: { contains: q, mode: "insensitive" } },
+    ];
+  }
+
+  const [logs, actors] = await Promise.all([
+    prisma.auditLog.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: 200,
+      include: { actor: { select: { firstName: true, lastName: true, email: true } } },
+    }),
+    prisma.user.findMany({
+      where: { tenantId: session.tenantId },
+      select: { id: true, firstName: true, lastName: true, email: true },
+      orderBy: { firstName: "asc" },
+    }),
+  ]);
+
+  const actorOptions = actors.map((a) => ({
+    id: a.id,
+    label: `${a.firstName} ${a.lastName}`.trim() || a.email,
+  }));
+
+  const active = [p.entity && `Entity: ${p.entity}`, p.action && `Action: ${p.action}`, p.actor && `Actor: ${actorOptions.find((a) => a.id === p.actor)?.label ?? p.actor}`, p.from && `From: ${p.from}`, p.to && `To: ${p.to}`, p.q && `Search: "${p.q}"`].filter(Boolean) as string[];
 
   return (
     <div className="space-y-5">
       <PageHeader title="Audit Log" description="Record changes in this workspace (who, what, before & after)." />
+
+      <Card>
+        <AuditFilters
+          entities={ENTITIES}
+          actions={["CREATE", "UPDATE", "DELETE"]}
+          actors={actorOptions}
+          params={p}
+        />
+        {active.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {active.map((chip) => (
+              <span key={chip} className="rounded-full bg-[var(--brand)]/15 px-3 py-1 text-xs font-medium text-[var(--brand)]">
+                {chip}
+              </span>
+            ))}
+          </div>
+        )}
+      </Card>
+
       <Card>
         {logs.length === 0 ? (
-          <EmptyState title="No audit entries yet" description="Changes to records will appear here." />
+          <EmptyState title="No matching audit entries" description="Try adjusting or clearing the filters." />
         ) : (
+          <p className="mb-3 text-xs text-[var(--muted)]">{logs.length} entr{logs.length === 1 ? "y" : "ies"}</p>
+        )}
+        {logs.length > 0 && (
           <ul className="divide-y">
             {logs.map((l) => {
               const summary = buildSummary({
