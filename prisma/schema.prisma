@@ -83,6 +83,7 @@ model Tenant {
   roles     Role[]
   locations Location[]
   notifications Notification[]
+  auditLogs AuditLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -106,6 +107,7 @@ model User {
   roles     UserRole[]
   locations UserLocation[]
   notifications Notification[]
+  auditLogs AuditLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -190,6 +192,34 @@ model UserLocation {
   location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 
   @@id([userId, locationId])
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+// Audit trail for record changes. tenantId is NULL for platform/admin changes,
+// otherwise the tenant that owns the record — kept under the same tenant
+// segregation as notifications so no tenant sees another's history.
+model AuditLog {
+  id        String      @id @default(cuid())
+  tenantId  String?
+  tenant    Tenant?     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actorId   String?
+  actor     User?       @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  entity    String // Tenant | User | Role | Location | Permission
+  entityId  String
+  entityName String? // human-readable label of the affected record
+  action    AuditAction
+  before    Json?
+  after     Json?
+  createdAt DateTime    @default(now())
+
+  @@index([tenantId])
+  @@index([entity, entityId])
+  @@index([createdAt])
 }
 
 enum NotificationType {

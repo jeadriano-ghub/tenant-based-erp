@@ -8,6 +8,7 @@ import {
   tenantSchema, userSchema, roleSchema, locationSchema, permissionSchema,
 } from "@/lib/validation";
 import { PLATFORM_ONLY_KEYS, TENANT_ADMIN_ROLE, TENANT_ADMIN_KEYS } from "@/lib/permissions";
+import { recordChange } from "@/lib/audit";
 
 export type ActionState = { error?: string; success?: string; id?: string };
 
@@ -117,7 +118,18 @@ export async function saveTenantAction(_p: ActionState, fd: FormData): Promise<A
   };
 
   if (id) {
+    const before = await prisma.tenant.findUnique({ where: { id } });
     const saved = await prisma.tenant.update({ where: { id }, data });
+    await recordChange({
+      tenantId: session.tenantId,
+      actorId: session.sub,
+      entity: "Tenant",
+      entityId: saved.id,
+      entityName: saved.name,
+      action: "UPDATE",
+      before,
+      after: data,
+    });
     revalidatePath(`${base}/dashboard/tenants`);
     revalidatePath(`${base}/dashboard/tenants/${saved.id}`);
     return { success: "Tenant updated.", id: saved.id };
@@ -170,6 +182,15 @@ export async function saveTenantAction(_p: ActionState, fd: FormData): Promise<A
 
   revalidatePath(`${base}/dashboard/tenants`);
   revalidatePath(`${base}/dashboard/tenants/${saved.id}`);
+  await recordChange({
+    tenantId: session.tenantId,
+    actorId: session.sub,
+    entity: "Tenant",
+    entityId: saved.id,
+    entityName: saved.name,
+    action: "CREATE",
+    after: data,
+  });
   return {
     success: `Tenant created. Admin login: ${d.email.toLowerCase()} · temporary password: ${tempPassword}`,
     id: saved.id,
@@ -179,7 +200,19 @@ export async function saveTenantAction(_p: ActionState, fd: FormData): Promise<A
 export async function deleteTenantAction(fd: FormData) {
   const { session, keys, base } = await ctx(fd);
   if (session.tenantId !== null || !can(keys, "tenant.delete")) return;
-  await prisma.tenant.delete({ where: { id: str(fd, "id") } });
+  const id = str(fd, "id");
+  const before = await prisma.tenant.findUnique({ where: { id } });
+  if (!before) return;
+  await prisma.tenant.delete({ where: { id } });
+  await recordChange({
+    tenantId: session.tenantId,
+    actorId: session.sub,
+    entity: "Tenant",
+    entityId: id,
+    entityName: before.name,
+    action: "DELETE",
+    before,
+  });
   revalidatePath(`${base}/dashboard/tenants`);
   redirect(`${base}/dashboard/tenants`);
 }
@@ -237,6 +270,8 @@ export async function saveUserAction(_p: ActionState, fd: FormData): Promise<Act
     ...(password ? { passwordHash: await hashPassword(password) } : {}),
   };
 
+  const beforeUser = id ? await prisma.user.findUnique({ where: { id } }) : null;
+
   const user = id
     ? await prisma.user.update({ where: { id }, data })
     : await prisma.user.create({ data: { ...data, passwordHash: data.passwordHash! } });
@@ -251,6 +286,17 @@ export async function saveUserAction(_p: ActionState, fd: FormData): Promise<Act
       data: locationIds.map((locationId, i) => ({ userId: user.id, locationId, isPrimary: i === 0 })),
     });
 
+  await recordChange({
+    tenantId: session.tenantId,
+    actorId: session.sub,
+    entity: "User",
+    entityId: user.id,
+    entityName: `${user.firstName} ${user.lastName}`.trim(),
+    action: id ? "UPDATE" : "CREATE",
+    before: id ? beforeUser : null,
+    after: data,
+  });
+
   revalidatePath(`${base}/dashboard/users`);
   revalidatePath(`${base}/dashboard/users/${user.id}`);
   return { success: id ? "User updated." : "User created.", id: user.id };
@@ -264,6 +310,15 @@ export async function deleteUserAction(fd: FormData) {
   const target = await prisma.user.findUnique({ where: { id } });
   if (!target || target.tenantId !== session.tenantId) return;
   await prisma.user.delete({ where: { id } });
+  await recordChange({
+    tenantId: session.tenantId,
+    actorId: session.sub,
+    entity: "User",
+    entityId: id,
+    entityName: `${target.firstName} ${target.lastName}`.trim(),
+    action: "DELETE",
+    before: target,
+  });
   revalidatePath(`${base}/dashboard/users`);
   redirect(`${base}/dashboard/users`);
 }
@@ -302,6 +357,8 @@ export async function saveRoleAction(_p: ActionState, fd: FormData): Promise<Act
   const dup = await prisma.role.findFirst({ where: { name: parsed.data.name, tenantId } });
   if (dup && dup.id !== id) return { error: "A role with that name already exists." };
 
+  const beforeRole = id ? await prisma.role.findUnique({ where: { id } }) : null;
+
   const role = id
     ? await prisma.role.update({
         where: { id },
@@ -317,6 +374,17 @@ export async function saveRoleAction(_p: ActionState, fd: FormData): Promise<Act
       data: permissionIds.map((permissionId) => ({ roleId: role.id, permissionId })),
     });
 
+  await recordChange({
+    tenantId: session.tenantId,
+    actorId: session.sub,
+    entity: "Role",
+    entityId: role.id,
+    entityName: role.name,
+    action: id ? "UPDATE" : "CREATE",
+    before: id ? beforeRole : null,
+    after: { name: role.name, description: role.description, permissionIds },
+  });
+
   revalidatePath(`${base}/dashboard/roles`);
   revalidatePath(`${base}/dashboard/roles/${role.id}`);
   return { success: id ? "Role updated." : "Role created.", id: role.id };
@@ -325,9 +393,19 @@ export async function saveRoleAction(_p: ActionState, fd: FormData): Promise<Act
 export async function deleteRoleAction(fd: FormData) {
   const { session, keys, base } = await ctx(fd);
   if (!can(keys, "role.delete")) return;
-  const role = await prisma.role.findUnique({ where: { id: str(fd, "id") } });
+  const id = str(fd, "id");
+  const role = await prisma.role.findUnique({ where: { id } });
   if (!role || role.tenantId !== session.tenantId || role.isSystem) return;
   await prisma.role.delete({ where: { id: role.id } });
+  await recordChange({
+    tenantId: session.tenantId,
+    actorId: session.sub,
+    entity: "Role",
+    entityId: role.id,
+    entityName: role.name,
+    action: "DELETE",
+    before: role,
+  });
   revalidatePath(`${base}/dashboard/roles`);
   redirect(`${base}/dashboard/roles`);
 }
@@ -350,12 +428,21 @@ export async function savePermissionAction(_p: ActionState, fd: FormData): Promi
   const exists = await prisma.permission.findUnique({ where: { key: parsed.data.key } });
   if (exists) return { error: "That permission key already exists." };
 
-  await prisma.permission.create({
+  const created = await prisma.permission.create({
     data: {
       key: parsed.data.key,
       module: parsed.data.module,
       description: parsed.data.description || null,
     },
+  });
+  await recordChange({
+    tenantId: session.tenantId,
+    actorId: session.sub,
+    entity: "Permission",
+    entityId: created.id,
+    entityName: created.key,
+    action: "CREATE",
+    after: { key: created.key, module: created.module, description: created.description },
   });
   revalidatePath(`${base}/dashboard/permissions`);
   return { success: "Permission created." };
@@ -394,9 +481,22 @@ export async function saveLocationAction(_p: ActionState, fd: FormData): Promise
     contactNo: d.contactNo || null,
   };
 
+  const beforeLoc = id ? await prisma.location.findUnique({ where: { id } }) : null;
+
   const saved = id
     ? await prisma.location.update({ where: { id }, data })
     : await prisma.location.create({ data: { ...data, tenantId: session.tenantId } });
+
+  await recordChange({
+    tenantId: session.tenantId,
+    actorId: session.sub,
+    entity: "Location",
+    entityId: saved.id,
+    entityName: saved.name,
+    action: id ? "UPDATE" : "CREATE",
+    before: id ? beforeLoc : null,
+    after: data,
+  });
 
   revalidatePath(`${base}/dashboard/locations`);
   revalidatePath(`${base}/dashboard/locations/${saved.id}`);
@@ -406,9 +506,19 @@ export async function saveLocationAction(_p: ActionState, fd: FormData): Promise
 export async function deleteLocationAction(fd: FormData) {
   const { session, keys, base } = await ctx(fd);
   if (!can(keys, "location.delete") || !session.tenantId) return;
-  const loc = await prisma.location.findUnique({ where: { id: str(fd, "id") } });
+  const id = str(fd, "id");
+  const loc = await prisma.location.findUnique({ where: { id } });
   if (!loc || loc.tenantId !== session.tenantId) return;
   await prisma.location.delete({ where: { id: loc.id } });
+  await recordChange({
+    tenantId: session.tenantId,
+    actorId: session.sub,
+    entity: "Location",
+    entityId: loc.id,
+    entityName: loc.name,
+    action: "DELETE",
+    before: loc,
+  });
   revalidatePath(`${base}/dashboard/locations`);
   redirect(`${base}/dashboard/locations`);
 }

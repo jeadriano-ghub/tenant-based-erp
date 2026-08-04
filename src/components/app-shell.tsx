@@ -14,6 +14,7 @@ function Icon({ name }: { name: string }) {
     Roles: "M12 2 4 6v6c0 5 3.4 8.6 8 10 4.6-1.4 8-5 8-10V6l-8-4Z",
     Permissions: "M7 11V7a5 5 0 0 1 10 0v4M5 11h14v10H5V11Z",
     "Branch / Warehouse": "M3 21h18M4 21V8l8-5 8 5v13M9 21v-6h6v6",
+    "Audit Log": "M9 11H5M9 5h4M9 17H5M5 5v14M13 11h6M13 5h6M13 17h6M19 5v14",
   };
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden>

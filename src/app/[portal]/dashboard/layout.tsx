@@ -33,6 +33,7 @@ export default async function DashboardLayout({
     { href: `${base}/dashboard/roles`, label: "Roles", show: has("role.view") },
     { href: `${base}/dashboard/permissions`, label: "Permissions", show: portal.isAdminPortal && has("permission.view") },
     { href: `${base}/dashboard/locations`, label: "Branch / Warehouse", show: !portal.isAdminPortal && has("location.view") },
+    { href: `${base}/dashboard/audit`, label: "Audit Log", show: true },
   ]
     .filter((n) => n.show)
     .map(({ href, label }) => ({ href, label }));
