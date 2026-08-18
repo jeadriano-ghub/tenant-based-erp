@@ -33,6 +33,7 @@ export default async function DashboardLayout({
     { href: `${base}/dashboard/roles`, label: "Roles", show: has("role.view") },
     { href: `${base}/dashboard/permissions`, label: "Permissions", show: portal.isAdminPortal && has("permission.view") },
     { href: `${base}/dashboard/locations`, label: "Branch / Warehouse", show: !portal.isAdminPortal && has("location.view") },
+    { href: `${base}/dashboard/inventory`, label: "Inventory", show: has("inventory.product.view") || has("inventory.category.view") || has("inventory.purchase_order.view") || has("inventory.sales_order.view") || has("inventory.quotation.view") || has("inventory.pos.view") },
     { href: `${base}/dashboard/audit`, label: "Audit Log", show: true },
   ]
     .filter((n) => n.show)

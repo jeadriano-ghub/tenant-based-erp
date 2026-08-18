@@ -64,6 +64,13 @@ export default async function OverviewPage({ params }: { params: Promise<{ porta
           value: await prisma.location.count({ where: { tenantId: session.tenantId ?? undefined } }),
           href: `${base}/dashboard/locations`,
         },
+        {
+          label: "Low stock products",
+          value: await prisma.productStockLevel.count({
+            where: { tenantId: session.tenantId!, quantity: { lte: 0 } },
+          }),
+          href: `${base}/dashboard/inventory/stock-movements`,
+        },
       ];
 
   return (

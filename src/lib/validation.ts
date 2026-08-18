@@ -70,7 +70,108 @@ export const locationSchema = z.object({
 });
 
 export const permissionSchema = z.object({
-  key: z.string().regex(/^[a-z0-9_]+\.[a-z0-9_.]+$/, "Key must look like module.action"),
+  key: z.string().regex(/^[a-z0-9_]+[.][a-z0-9_.]+$/, "Key must look like module.action"),
   module: z.string().min(2, "Module is required."),
   description: z.string().optional().or(z.literal("")),
+});
+
+export const categorySchema = z.object({
+  name: z.string().min(2, "Category name is required.").max(120),
+  parentId: z.string().optional().or(z.literal("")),
+  description: z.string().optional().or(z.literal("")),
+});
+
+export const brandSchema = z.object({
+  name: z.string().min(2, "Brand name is required.").max(120),
+  description: z.string().optional().or(z.literal("")),
+  website: z.string().url("Website must be a valid URL.").optional().or(z.literal("")),
+});
+
+export const supplierSchema = z.object({
+  name: z.string().min(2, "Supplier name is required.").max(160),
+  contactPerson: z.string().optional().or(z.literal("")),
+  email: z.string().email("Enter a valid email address.").optional().or(z.literal("")),
+  contactNo: z.string().optional().or(z.literal("")),
+  addressLine1: z.string().optional().or(z.literal("")),
+  addressLine2: z.string().optional().or(z.literal("")),
+  city: z.string().optional().or(z.literal("")),
+  stateProvince: z.string().optional().or(z.literal("")),
+  postalCode: z.string().optional().or(z.literal("")),
+  country: z.string().optional().or(z.literal("")),
+  tin: z.string().optional().or(z.literal("")),
+  businessRegNo: z.string().optional().or(z.literal("")),
+  notes: z.string().optional().or(z.literal("")),
+});
+
+export const productSchema = z.object({
+  sku: z.string().min(1, "SKU is required.").max(80),
+  name: z.string().min(2, "Product name is required.").max(160),
+  description: z.string().optional().or(z.literal("")),
+  productType: z.enum(["SERIALIZED", "NON_SERIALIZED", "BARCODE"]),
+  categoryId: z.string().min(1, "Category is required."),
+  brandId: z.string().optional().or(z.literal("")),
+  unitOfMeasure: z.string().optional().or(z.literal("")),
+  costPrice: z.string().optional().or(z.literal("")),
+  sellingPrice: z.string().optional().or(z.literal("")),
+  minStockLevel: z.string().optional().or(z.literal("")),
+  reorderPoint: z.string().optional().or(z.literal("")),
+});
+
+export const purchaseOrderSchema = z.object({
+  referenceNo: z.string().optional().or(z.literal("")),
+  supplierId: z.string().min(1, "Supplier is required."),
+  expectedDate: z.string().optional().or(z.literal("")),
+  notes: z.string().optional().or(z.literal("")),
+});
+
+export const stockInSchema = z.object({
+  purchaseOrderId: z.string().optional().or(z.literal("")),
+  referenceNo: z.string().optional().or(z.literal("")),
+  receivedBy: z.string().optional().or(z.literal("")),
+  notes: z.string().optional().or(z.literal("")),
+  productId: z.string().min(1, "Product is required."),
+  quantity: z.string().min(1, "Quantity is required."),
+  unitCost: z.string().optional().or(z.literal("")),
+  expiryDate: z.string().optional().or(z.literal("")),
+  batchNo: z.string().optional().or(z.literal("")),
+  itemNotes: z.string().optional().or(z.literal("")),
+});
+
+export const salesOrderSchema = z.object({
+  customerName: z.string().min(2, "Customer name is required.").max(160),
+  customerEmail: z.string().email("Enter a valid email address.").optional().or(z.literal("")),
+  contactNo: z.string().optional().or(z.literal("")),
+  shippingAddress: z.string().optional().or(z.literal("")),
+  referenceNo: z.string().optional().or(z.literal("")),
+  notes: z.string().optional().or(z.literal("")),
+  productId: z.string().min(1, "Product is required."),
+  quantity: z.string().min(1, "Quantity is required."),
+  unitPrice: z.string().optional().or(z.literal("")),
+  discount: z.string().optional().or(z.literal("")),
+  tax: z.string().optional().or(z.literal("")),
+});
+
+export const quotationSchema = z.object({
+  customerName: z.string().min(2, "Customer name is required.").max(160),
+  customerEmail: z.string().email("Enter a valid email address.").optional().or(z.literal("")),
+  contactNo: z.string().optional().or(z.literal("")),
+  expiryDate: z.string().optional().or(z.literal("")),
+  referenceNo: z.string().optional().or(z.literal("")),
+  notes: z.string().optional().or(z.literal("")),
+  productId: z.string().min(1, "Product is required."),
+  quantity: z.string().min(1, "Quantity is required."),
+  unitPrice: z.string().optional().or(z.literal("")),
+  discount: z.string().optional().or(z.literal("")),
+  tax: z.string().optional().or(z.literal("")),
+  itemNotes: z.string().optional().or(z.literal("")),
+});
+
+export const stockMovementSchema = z.object({
+  productId: z.string().min(1, "Product is required."),
+  type: z.enum(["PURCHASE", "SALE", "ADJUSTMENT", "RETURN", "TRANSFER"]),
+  quantity: z.string().min(1, "Quantity is required."),
+  reference: z.string().optional().or(z.literal("")),
+  notes: z.string().optional().or(z.literal("")),
+  serialId: z.string().optional().or(z.literal("")),
+  barcode: z.string().optional().or(z.literal("")),
 });

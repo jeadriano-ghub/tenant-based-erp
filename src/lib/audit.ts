@@ -95,7 +95,7 @@ function formatVal(v: unknown): string {
 export type ChangeInput = {
   tenantId: string | null;
   actorId: string | null;
-  entity: "Tenant" | "User" | "Role" | "Location" | "Permission";
+  entity: string;
   entityId: string;
   entityName?: string | null;
   action: "CREATE" | "UPDATE" | "DELETE";
