@@ -143,13 +143,23 @@ export async function requireSession(portal: Portal) {
 
 export async function getPermissionKeys(userId: string, isSuperAdmin: boolean): Promise<string[]> {
   if (isSuperAdmin) return ["*"];
-  const rows: any = await prisma.userRole.findMany({
+  const userRoles = await prisma.userRole.findMany({
     where: { userId },
-    include: { role: { include: { permissions: { include: { permission: true } } } } },
-  } as any);
-  const keys = new Set<string>();
-  for (const r of rows) for (const rp of r.role.permissions) keys.add(rp.permission.key);
-  return [...keys];
+    select: { roleId: true },
+  });
+  if (!userRoles.length) return [];
+  const roleIds = userRoles.map((r) => r.roleId);
+  const rolePermissions = await prisma.rolePermission.findMany({
+    where: { roleId: { in: roleIds } },
+    select: { permissionId: true },
+  });
+  if (!rolePermissions.length) return [];
+  const permissionIds = Array.from(new Set(rolePermissions.map((rp) => rp.permissionId)));
+  const permissions = await prisma.permission.findMany({
+    where: { id: { in: permissionIds } },
+    select: { key: true },
+  });
+  return permissions.map((p) => p.key);
 }
 
 export function can(keys: string[], key: string) {
