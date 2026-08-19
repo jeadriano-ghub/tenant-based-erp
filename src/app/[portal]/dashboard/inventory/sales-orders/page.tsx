@@ -25,9 +25,8 @@ export default async function SalesOrdersPage({ params }: { params: Promise<{ po
   const base = portal.base;
   const salesOrders = await prisma.salesOrder.findMany({
     where: { tenantId: session.tenantId! },
-    include: { createdBy: { include: { roles: { include: { role: true } } } } },
     orderBy: { createdAt: "desc" },
-  });
+  } as any);
   const canCreate = can(keys, "inventory.sales_order.create");
 
   return (
