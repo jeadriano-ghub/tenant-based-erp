@@ -4,6 +4,7 @@ import { requireSession, getPermissionKeys, can, resolvePortal } from "@/lib/aut
 import { PageHeader, Card } from "@/components/ui";
 import { saveRoleAction } from "../../actions";
 import { RoleForm } from "../role-form";
+import { TENANT_ASSIGNABLE } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,8 @@ export default async function NewRolePage({ params }: { params: Promise<{ portal
   if (!can(keys, "role.create")) redirect(`${portal.base}/dashboard/roles`);
   const isAdminPortal = portal.isAdminPortal;
 
-  const permissions = await prisma.permission.findMany({ orderBy: [{ module: "asc" }, { key: "asc" }] });
+  const allPermissions = await prisma.permission.findMany({ orderBy: [{ module: "asc" }, { key: "asc" }] });
+  const permissions = isAdminPortal ? allPermissions : allPermissions.filter((p) => TENANT_ASSIGNABLE.some((tp) => tp.key === p.key));
 
   return (
     <div>
