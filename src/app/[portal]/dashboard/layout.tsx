@@ -28,16 +28,41 @@ export default async function DashboardLayout({
   const nav = [
     { href: `${base}/dashboard`, label: "Overview", show: true },
     { href: `${base}/dashboard/tenants`, label: "Tenant Management", show: portal.isAdminPortal && has("tenant.view") },
-    // Tenant users may never see the platform permission catalogue.
     { href: `${base}/dashboard/users`, label: "Manage Users", show: has("user.view") },
     { href: `${base}/dashboard/roles`, label: "Roles", show: has("role.view") },
     { href: `${base}/dashboard/permissions`, label: "Permissions", show: portal.isAdminPortal && has("permission.view") },
     { href: `${base}/dashboard/locations`, label: "Branch / Warehouse", show: !portal.isAdminPortal && has("location.view") },
-    { href: `${base}/dashboard/inventory`, label: "Inventory", show: has("inventory.product.view") || has("inventory.category.view") || has("inventory.purchase_order.view") || has("inventory.sales_order.view") || has("inventory.quotation.view") || has("inventory.pos.view") },
-    { href: `${base}/dashboard/audit`, label: "Audit Log", show: true },
   ]
     .filter((n) => n.show)
-    .map(({ href, label }) => ({ href, label }));
+    .map(({ href, label }) => ({ href, label } as { href: string; label: string }));
+
+  const inventoryGroup: { label: string; items: { href: string; label: string }[] } | null = !portal.isAdminPortal &&
+    (has("inventory.view") ||
+      has("inventory.product.view") ||
+      has("inventory.category.view") ||
+      has("inventory.brand.view") ||
+      has("inventory.supplier.view") ||
+      has("inventory.purchase_order.view") ||
+      has("inventory.stock_in.view") ||
+      has("inventory.sales_order.view") ||
+      has("inventory.quotation.view") ||
+      has("inventory.pos.view") ||
+      has("inventory.stock_movement.view"))
+    ? {
+        label: "Inventory",
+        items: [
+          { href: `${base}/dashboard/inventory/products`, label: "Products" },
+          { href: `${base}/dashboard/inventory/suppliers`, label: "Suppliers" },
+          { href: `${base}/dashboard/inventory/purchase-orders`, label: "Purchase Orders" },
+          { href: `${base}/dashboard/inventory/quotations`, label: "Quotations" },
+          { href: `${base}/dashboard/inventory/sales-orders`, label: "Sales Orders" },
+          { href: `${base}/dashboard/inventory/pos`, label: "POS" },
+          { href: `${base}/dashboard/inventory/stock-movements`, label: "Stock Movements" },
+        ],
+      }
+    : null;
+
+  const finalNav = inventoryGroup ? [...nav, inventoryGroup, { href: `${base}/dashboard/audit`, label: "Audit Log" }] : [...nav, { href: `${base}/dashboard/audit`, label: "Audit Log" }];
 
   const signOut = (
     <form action={logoutAction}>
@@ -50,7 +75,7 @@ export default async function DashboardLayout({
 
   return (
     <AppShell
-      nav={nav}
+      nav={finalNav as any}
       title={portal.isAdminPortal ? "JRA ERP" : portal.tenant.name}
       subtitle={`${ROOT_DOMAIN}/${portal.slug}`}
       logoUrl={portal.isAdminPortal ? null : portal.tenant.logoUrl}

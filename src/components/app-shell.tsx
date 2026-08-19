@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 export type NavItem = { href: string; label: string };
+export type NavGroup = { label: string; items: NavItem[] };
 
 function Icon({ name }: { name: string }) {
   const paths: Record<string, string> = {
@@ -15,10 +16,23 @@ function Icon({ name }: { name: string }) {
     Permissions: "M7 11V7a5 5 0 0 1 10 0v4M5 11h14v10H5V11Z",
     "Branch / Warehouse": "M3 21h18M4 21V8l8-5 8 5v13M9 21v-6h6v6",
     "Audit Log": "M9 11H5M9 5h4M9 17H5M5 5v14M13 11h6M13 5h6M13 17h6M19 5v14",
+    Inventory: "M20 7h-9M20 11h-9M20 15h-9M5 7h2m-2 4h2m-2 4h2",
+    "Catalog": "M20 7h-9M20 11h-9M20 15h-9M5 7h2m-2 4h2m-2 4h2",
+    Purchasing: "M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5",
+    Sales: "M12 2 2 7l10 5 10-5-10-5ZM2 17l10 5 10-5M2 12l10 5 10-5",
+    POS: "M3 3h18v18H3zM9 9h.01M15 9h.01M9 15h.01M15 15h.01M8 14a4 4 0 0 1 8 0",
   };
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden>
       <path d={paths[name] ?? paths.Overview} />
+    </svg>
+  );
+}
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden>
+      <path d="m6 9 6 6 6-6" />
     </svg>
   );
 }
@@ -28,10 +42,7 @@ function NavLinks({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => 
   return (
     <nav className="space-y-1">
       {items.map((n) => {
-        // Overview must match exactly; section links match their subtree.
-        const active = n.href.endsWith("/dashboard")
-          ? pathname === n.href
-          : pathname.startsWith(n.href);
+        const active = n.href.endsWith("/dashboard") ? pathname === n.href : pathname.startsWith(n.href);
         return (
           <Link
             key={n.href}
@@ -53,6 +64,31 @@ function NavLinks({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => 
   );
 }
 
+function NavGroupSection({ group, onNavigate }: { group: NavGroup; onNavigate?: () => void }) {
+  const [open, setOpen] = useState(true);
+  const pathname = usePathname();
+  const active = group.items.some((n) => pathname.startsWith(n.href));
+
+  return (
+    <div className="space-y-1">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+          active ? "text-[var(--foreground)]" : "text-[var(--muted)] hover:bg-[var(--background)] hover:text-[var(--foreground)]"
+        }`}
+      >
+        <span className="flex items-center gap-3">
+          <Icon name={group.label} />
+          <span className="truncate">{group.label}</span>
+        </span>
+        <Chevron open={open} />
+      </button>
+      {open && <div className="ml-5 border-l pl-2"><NavLinks items={group.items} onNavigate={onNavigate} /></div>}
+    </div>
+  );
+}
+
 function Brand({
   title, subtitle, logoUrl, defaultLogoUrl,
 }: {
@@ -71,7 +107,7 @@ function Brand({
       )}
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold leading-tight">{title}</p>
-        <p className="truncate text-xs text-[var(--muted)]">{subtitle}</p>
+        <p className="truncate text-xs text-[var(--muted)] leading-tight">{subtitle}</p>
       </div>
     </div>
   );
@@ -139,10 +175,12 @@ function SignOutControl({ signOut }: { signOut: ReactNode }) {
   );
 }
 
+const isGrouped = (nav: NavItem[] | NavGroup[]): nav is NavGroup[] => nav.length > 0 && "items" in nav[0];
+
 export function AppShell({
   nav, title, subtitle, logoUrl, defaultLogoUrl, user, signOut, bell, children,
 }: {
-  nav: NavItem[];
+  nav: NavItem[] | NavGroup[];
   title: string;
   subtitle: string;
   logoUrl?: string | null;
@@ -167,6 +205,13 @@ export function AppShell({
     </div>
   );
 
+  const renderNav = (onNavigate?: () => void) => {
+    if (isGrouped(nav)) {
+      return nav.map((group) => (<NavGroupSection key={group.label} group={group} onNavigate={onNavigate} />));
+    }
+    return <NavLinks items={nav} onNavigate={onNavigate} />;
+  };
+
   return (
     <div className="flex min-h-screen">
       {/* Desktop sidebar (brand + nav only) */}
@@ -174,7 +219,7 @@ export function AppShell({
         <div className="border-b px-4 py-4">
           <Brand title={title} subtitle={subtitle} logoUrl={logoUrl} defaultLogoUrl={defaultLogoUrl} />
         </div>
-        <div className="flex-1 overflow-y-auto p-3"><NavLinks items={nav} /></div>
+        <div className="flex-1 overflow-y-auto p-3">{renderNav()}</div>
       </aside>
 
       {/* Mobile drawer */}
@@ -194,7 +239,7 @@ export function AppShell({
                 </svg>
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-3"><NavLinks items={nav} onNavigate={() => setOpen(false)} /></div>
+            <div className="flex-1 overflow-y-auto p-3">{renderNav(() => setOpen(false))}</div>
           </div>
         </div>
       )}
