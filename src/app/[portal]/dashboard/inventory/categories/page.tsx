@@ -13,7 +13,7 @@ export default async function CategoriesPage({ params }: { params: Promise<{ por
   const { session } = await requireSession(portal);
   if (!session) redirect(`${portal.base}/login`);
   const keys = await getPermissionKeys(session.sub, session.isSuperAdmin);
-  if (!can(keys, "inventory.category.view")) redirect(`${portal.base}/dashboard`);
+  if (!can(keys, "inventory.category.view")) redirect(`${portal.base}/dashboard/inventory`);
 
   const base = portal.base;
   const categories = await prisma.category.findMany({

@@ -21,7 +21,7 @@ export default async function StockMovementsPage({ params }: { params: Promise<{
   const { session } = await requireSession(portal);
   if (!session) redirect(`${portal.base}/login`);
   const keys = await getPermissionKeys(session.sub, session.isSuperAdmin);
-  if (!can(keys, "inventory.stock_movement.view")) redirect(`${portal.base}/dashboard`);
+  if (!can(keys, "inventory.stock_movement.view")) redirect(`${portal.base}/dashboard/inventory`);
 
   const base = portal.base;
   const rawMovements = await prisma.stockMovement.findMany({

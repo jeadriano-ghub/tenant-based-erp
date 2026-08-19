@@ -13,7 +13,7 @@ export default async function BrandsPage({ params }: { params: Promise<{ portal:
   const { session } = await requireSession(portal);
   if (!session) redirect(`${portal.base}/login`);
   const keys = await getPermissionKeys(session.sub, session.isSuperAdmin);
-  if (!can(keys, "inventory.brand.view")) redirect(`${portal.base}/dashboard`);
+  if (!can(keys, "inventory.brand.view")) redirect(`${portal.base}/dashboard/inventory`);
 
   const base = portal.base;
   const brands = await prisma.brand.findMany({ where: { tenantId: session.tenantId! }, orderBy: { createdAt: "desc" } });

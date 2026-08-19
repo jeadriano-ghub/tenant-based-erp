@@ -15,6 +15,18 @@ export default async function InventoryDashboardPage({ params }: { params: Promi
   const keys = await getPermissionKeys(session.sub, session.isSuperAdmin);
   const can = (key: string) => keys.includes("*") || keys.includes(key);
 
+  const inventoryKeys = [
+    "inventory.product.view","inventory.product.create","inventory.product.update","inventory.product.delete",
+    "inventory.category.view","inventory.category.create","inventory.category.update","inventory.category.delete",
+    "inventory.brand.view","inventory.brand.create","inventory.brand.update","inventory.brand.delete",
+    "inventory.supplier.view","inventory.supplier.create","inventory.supplier.update","inventory.supplier.delete",
+    "inventory.purchase_order.view","inventory.purchase_order.create","inventory.purchase_order.update","inventory.purchase_order.delete",
+    "inventory.sales_order.view","inventory.sales_order.create","inventory.sales_order.update","inventory.sales_order.delete",
+    "inventory.quotation.view","inventory.quotation.create","inventory.quotation.update","inventory.quotation.delete",
+    "inventory.stock_movement.view","inventory.stock_movement.create",
+    "inventory.pos.view","inventory.pos.create",
+  ];
+
   return (
     <div>
       <PageHeader
@@ -42,6 +54,33 @@ export default async function InventoryDashboardPage({ params }: { params: Promi
       />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Card title="Debug" description="Current session effective permission keys">
+          <div className="space-y-2 text-xs">
+            <div>
+              <span className="text-[var(--muted)]">User:</span> <span className="font-mono">{session.name} · {session.email}</span>
+            </div>
+            <div>
+              <span className="text-[var(--muted)]">Super admin:</span> <span className="font-mono">{String(session.isSuperAdmin)}</span>
+            </div>
+            <div>
+              <span className="text-[var(--muted)]">Inventory keys ({keys.filter(k => k.startsWith("inventory.")).length}/{inventoryKeys.length}):</span>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {inventoryKeys.map((k) => {
+                  const has = keys.includes("*") || keys.includes(k);
+                  return (
+                    <span key={k} className={`rounded px-1.5 py-1 font-mono ${has ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"}`}>
+                      {has ? "✓" : "✗"} {k}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+            <details className="mt-2">
+              <summary className="cursor-pointer text-[var(--muted)]">All effective keys</summary>
+              <pre className="mt-2 overflow-x-auto rounded-lg border p-2 font-mono text-[10px] leading-relaxed">{keys.join("\n")}</pre>
+            </details>
+          </div>
+        </Card>
         <Card title="Products" description="Catalog, types, stock levels, and pricing.">
           <div className="flex flex-wrap gap-2">
             <LinkButton href={`${base}/dashboard/inventory/products`} variant="secondary">Products</LinkButton>

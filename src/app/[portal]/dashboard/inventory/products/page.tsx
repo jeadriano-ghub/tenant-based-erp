@@ -19,7 +19,7 @@ export default async function ProductsPage({ params }: { params: Promise<{ porta
   const { session } = await requireSession(portal);
   if (!session) redirect(`${portal.base}/login`);
   const keys = await getPermissionKeys(session.sub, session.isSuperAdmin);
-  if (!can(keys, "inventory.product.view")) redirect(`${portal.base}/dashboard`);
+  if (!can(keys, "inventory.product.view")) redirect(`${portal.base}/dashboard/inventory`);
 
   const base = portal.base;
   const products = await prisma.product.findMany({

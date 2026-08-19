@@ -13,7 +13,7 @@ export default async function SuppliersPage({ params }: { params: Promise<{ port
   const { session } = await requireSession(portal);
   if (!session) redirect(`${portal.base}/login`);
   const keys = await getPermissionKeys(session.sub, session.isSuperAdmin);
-  if (!can(keys, "inventory.supplier.view")) redirect(`${portal.base}/dashboard`);
+  if (!can(keys, "inventory.supplier.view")) redirect(`${portal.base}/dashboard/inventory`);
 
   const base = portal.base;
   const suppliers = await prisma.supplier.findMany({ where: { tenantId: session.tenantId! }, orderBy: { createdAt: "desc" } } as any);

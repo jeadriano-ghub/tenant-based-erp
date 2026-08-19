@@ -22,7 +22,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
   const { session } = await requireSession(portal);
   if (!session) redirect(`${portal.base}/login`);
   const keys = await getPermissionKeys(session.sub, session.isSuperAdmin);
-  if (!can(keys, "inventory.quotation.view")) redirect(`${portal.base}/dashboard`);
+  if (!can(keys, "inventory.quotation.view")) redirect(`${portal.base}/dashboard/inventory`);
 
   const base = portal.base;
   const rawQuotation: any = await (prisma.quotation.findUnique({

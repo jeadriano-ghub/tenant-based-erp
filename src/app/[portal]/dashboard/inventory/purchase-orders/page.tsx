@@ -20,7 +20,7 @@ export default async function PurchaseOrdersPage({ params }: { params: Promise<{
   const { session } = await requireSession(portal);
   if (!session) redirect(`${portal.base}/login`);
   const keys = await getPermissionKeys(session.sub, session.isSuperAdmin);
-  if (!can(keys, "inventory.purchase_order.view")) redirect(`${portal.base}/dashboard`);
+  if (!can(keys, "inventory.purchase_order.view")) redirect(`${portal.base}/dashboard/inventory`);
 
   const base = portal.base;
   const purchaseOrders = await prisma.purchaseOrder.findMany({

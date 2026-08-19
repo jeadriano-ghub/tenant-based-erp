@@ -21,7 +21,7 @@ export default async function QuotationsPage({ params }: { params: Promise<{ por
   const { session } = await requireSession(portal);
   if (!session) redirect(`${portal.base}/login`);
   const keys = await getPermissionKeys(session.sub, session.isSuperAdmin);
-  if (!can(keys, "inventory.quotation.view")) redirect(`${portal.base}/dashboard`);
+  if (!can(keys, "inventory.quotation.view")) redirect(`${portal.base}/dashboard/inventory`);
 
   const base = portal.base;
   const quotations = await prisma.quotation.findMany({ where: { tenantId: session.tenantId! }, orderBy: { createdAt: "desc" } });
