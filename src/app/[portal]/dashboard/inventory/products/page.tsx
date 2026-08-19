@@ -35,12 +35,17 @@ export default async function ProductsPage({ params }: { params: Promise<{ porta
   const base = portal.base;
   const canCreate = can(keys, "inventory.product.create");
 
-  // Diagnostic: render static content first to isolate blank-page cause
+  // Diagnostic: add queries back one at a time to isolate crash
+  const products = await prisma.product.findMany({
+    where: { tenantId: session.tenantId },
+    orderBy: { updatedAt: "desc" },
+  });
+
   return (
     <div>
       <PageHeader title="Products" description="Item master data by type, category, and brand." action={canCreate ? <LinkButton href={`${base}/dashboard/inventory/products/new`}>New product</LinkButton> : undefined} />
       <Card>
-        <p className="text-sm text-[var(--muted)]">Diagnostic: products page rendered successfully. Data loading disabled for diagnosis.</p>
+        <p className="text-sm text-[var(--muted)]">Diagnostic: products={products.length}. Queries so far: product findMany only.</p>
       </Card>
     </div>
   );
