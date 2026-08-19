@@ -18,9 +18,11 @@ export default async function CategoriesPage({ params }: { params: Promise<{ por
   const base = portal.base;
   const categories = await prisma.category.findMany({
     where: { tenantId: session.tenantId! },
-    include: { parent: true },
     orderBy: { createdAt: "desc" },
-  });
+  } as any);
+  const parents = await prisma.category.findMany({ where: { tenantId: session.tenantId! }, select: { id: true, name: true } } as any);
+  const parentMap = new Map(parents.map((p: any) => [p.id, p.name as string]));
+  const categoriesWithParent = categories.map((c: any) => ({ ...c, parent: { name: parentMap.get(c.parentId) || null } }));
 
   const canCreate = can(keys, "inventory.category.create");
 
@@ -36,10 +38,10 @@ export default async function CategoriesPage({ params }: { params: Promise<{ por
           <EmptyState title="No categories" action={canCreate ? <LinkButton href={`${base}/dashboard/inventory/categories/new`}>New category</LinkButton> : undefined} />
         ) : (
           <ResponsiveList
-            rows={categories as any}
+            rows={categoriesWithParent}
             href={(c) => `${base}/dashboard/inventory/categories/${c.id}`}
-            primary={(c) => (c as any).name}
-            secondary={(c) => ((c as any).parent ?? {})?.name || ""}
+            primary={(c: any) => (c as any).name}
+            secondary={(c: any) => ((c as any).parent ?? {})?.name || ""}
             meta={(c) => [{ label: "Status", value: <Badge tone={(c as any).isActive ? "success" : "neutral"}>{(c as any).isActive ? "Active" : "Inactive"}</Badge> }]}
             columns={[
               { key: "name", header: "Name", cell: (c) => (c as any).name },

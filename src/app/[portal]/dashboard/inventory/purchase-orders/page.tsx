@@ -25,9 +25,11 @@ export default async function PurchaseOrdersPage({ params }: { params: Promise<{
   const base = portal.base;
   const purchaseOrders = await prisma.purchaseOrder.findMany({
     where: { tenantId: session.tenantId! },
-    include: { supplier: true },
     orderBy: { createdAt: "desc" },
-  });
+  } as any);
+  const supplierIds = Array.from(new Set(purchaseOrders.map((po: any) => po.supplierId).filter(Boolean)));
+  const suppliers = supplierIds.length ? await prisma.supplier.findMany({ where: { id: { in: supplierIds } }, select: { id: true, name: true } } as any) : [];
+  const supplierMap = new Map(suppliers.map((s: any) => [s.id, s.name]));
   const canCreate = can(keys, "inventory.purchase_order.create");
 
   return (
@@ -41,11 +43,11 @@ export default async function PurchaseOrdersPage({ params }: { params: Promise<{
             rows={purchaseOrders}
             href={(po) => `${base}/dashboard/inventory/purchase-orders/${po.id}`}
             primary={(po) => po.referenceNo || `PO ${po.id}`}
-            secondary={(po) => po.supplier?.name || ""}
+            secondary={(po) => supplierMap.get(po.supplierId) || ""}
             meta={(po) => [{ label: "Status", value: <Badge tone={STATUS_TONE[po.status] ?? "neutral"}>{po.status}</Badge> }]}
             columns={[
               { key: "ref", header: "Reference", cell: (po) => po.referenceNo || `PO ${po.id}` },
-              { key: "supplier", header: "Supplier", cell: (po) => po.supplier?.name || "—" },
+              { key: "supplier", header: "Supplier", cell: (po) => supplierMap.get(po.supplierId) || "—" },
               { key: "status", header: "Status", cell: (po) => <Badge tone={STATUS_TONE[po.status] ?? "neutral"}>{po.status}</Badge> },
               { key: "expected", header: "Expected", cell: (po) => po.expectedDate ? new Date(po.expectedDate).toLocaleDateString() : "—" },
             ]}

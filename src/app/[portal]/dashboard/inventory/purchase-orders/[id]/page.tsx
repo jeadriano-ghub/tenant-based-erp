@@ -24,11 +24,15 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
   if (!can(keys, "inventory.purchase_order.view")) redirect(`${portal.base}/dashboard/inventory`);
 
   const base = portal.base;
-  const po = await prisma.purchaseOrder.findUnique({
-    where: { id },
-    include: { supplier: true, items: { include: { product: true } }, stockIns: true },
-  });
+  const po = await prisma.purchaseOrder.findUnique({ where: { id } } as any);
   if (!po || po.tenantId !== session.tenantId) notFound();
+
+  const supplier = po.supplierId ? await prisma.supplier.findUnique({ where: { id: po.supplierId } } as any) : null;
+  const items = await prisma.purchaseOrderItem.findMany({ where: { purchaseOrderId: po.id } } as any);
+  const productIds = Array.from(new Set(items.map((i: any) => i.productId)));
+  const products = productIds.length ? await prisma.product.findMany({ where: { id: { in: productIds } }, select: { id: true, name: true } } as any) : [];
+  const productMap = new Map(products.map((p: any) => [p.id, p.name]));
+  const stockIns = await prisma.stockIn.findMany({ where: { purchaseOrderId: po.id } } as any);
 
   const canUpdate = can(keys, "inventory.purchase_order.update");
 
@@ -36,7 +40,7 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
     <div className="space-y-5">
       <PageHeader
         title={`Purchase order ${po.referenceNo || `PO ${po.id}`}`}
-        description={po.supplier?.name ?? "Purchase order"}
+        description={supplier?.name ?? "Purchase order"}
         breadcrumb={{ href: `${base}/dashboard/inventory/purchase-orders`, label: "Purchase orders" }}
         action={
           <div className="flex gap-2">
@@ -48,7 +52,7 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
         <DescriptionList
           items={[
             { label: "Reference", value: po.referenceNo || `PO ${po.id}` },
-            { label: "Supplier", value: po.supplier?.name || "—" },
+            { label: "Supplier", value: supplier?.name || "—" },
             { label: "Status", value: <Badge tone={STATUS_TONE[po.status] ?? "neutral"}>{po.status}</Badge> },
             { label: "Expected", value: po.expectedDate ? new Date(po.expectedDate).toLocaleDateString() : "—" },
             { label: "Received", value: po.receivedDate ? new Date(po.receivedDate).toLocaleDateString() : "—" },
@@ -57,14 +61,14 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
       </Card>
 
       <Card title="Items">
-        {po.items.length === 0 ? (
+        {items.length === 0 ? (
           <p className="text-sm text-[var(--muted)]">No items.</p>
         ) : (
           <div className="space-y-2">
-            {po.items.map((item) => (
+            {items.map((item: any) => (
               <div key={item.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
                 <div>
-                  <div className="font-medium">{item.product?.name || item.productId}</div>
+                  <div className="font-medium">{productMap.get(item.productId) || item.productId}</div>
                   <div className="text-xs text-[var(--muted)]">Qty: {item.quantity} · Unit cost: ₱{Number(item.unitCost).toFixed(2)} · Received: {item.receivedQty}</div>
                 </div>
               </div>
@@ -74,11 +78,11 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
       </Card>
 
       <Card title="Stock ins">
-        {po.stockIns.length === 0 ? (
+        {stockIns.length === 0 ? (
           <p className="text-sm text-[var(--muted)]">No stock ins recorded.</p>
         ) : (
           <div className="space-y-2">
-            {po.stockIns.map((si) => (
+            {stockIns.map((si: any) => (
               <div key={si.id} className="rounded-lg border px-3 py-2 text-sm">
                 <div className="font-medium">{si.referenceNo || `StockIn ${si.id}`}</div>
                 <div className="text-xs text-[var(--muted)]">Received: {new Date(si.receivedAt).toLocaleString()}</div>
