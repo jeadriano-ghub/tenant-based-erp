@@ -23,6 +23,9 @@ export default async function DashboardLayout({
 
   const keys = await getPermissionKeys(session.sub, session.isSuperAdmin);
   const has = (k: string) => keys.includes("*") || keys.includes(k);
+  const hasSomeInventory = (ks: string[]) =>
+    ks.includes("*") ||
+    ks.some((k) => k.startsWith("inventory."));
   const base = portal.base;
 
   const nav = [
@@ -36,7 +39,7 @@ export default async function DashboardLayout({
     .filter((n) => n.show)
     .map(({ href, label }) => ({ href, label } as { href: string; label: string }));
 
-  const inventoryGroup: { label: string; items: { href: string; label: string }[] } | null = !portal.isAdminPortal
+  const inventoryGroup: { label: string; items: { href: string; label: string }[] } | null = !portal.isAdminPortal && hasSomeInventory(keys)
     ? {
         label: "Inventory",
         items: [
