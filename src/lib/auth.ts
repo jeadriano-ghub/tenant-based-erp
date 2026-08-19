@@ -143,7 +143,7 @@ export async function requireSession(portal: Portal) {
 
 export async function getPermissionKeys(userId: string, isSuperAdmin: boolean): Promise<string[]> {
   if (isSuperAdmin) return ["*"];
-  const rows: any[] = await prisma.userRole.findMany({
+  const rows: any = await prisma.userRole.findMany({
     where: { userId },
     include: { role: { include: { permissions: { include: { permission: true } } } } },
   } as any);

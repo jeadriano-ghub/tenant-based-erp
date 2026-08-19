@@ -11,7 +11,6 @@ const STATUS_TONE: Record<string, "neutral" | "success" | "warning" | "danger" |
   SENT: "warning",
   ACCEPTED: "success",
   REJECTED: "danger",
-  CONVERTED: "brand",
 };
 
 export default async function QuotationsPage({ params }: { params: Promise<{ portal: string }> }) {
@@ -24,28 +23,48 @@ export default async function QuotationsPage({ params }: { params: Promise<{ por
   if (!can(keys, "inventory.quotation.view")) redirect(`${portal.base}/dashboard/inventory`);
 
   const base = portal.base;
-  const quotations = await prisma.quotation.findMany({ where: { tenantId: session.tenantId! }, orderBy: { createdAt: "desc" } });
+  const quotations: any[] = await prisma.quotation.findMany({
+    where: { tenantId: session.tenantId! },
+    orderBy: { createdAt: "desc" },
+  });
   const canCreate = can(keys, "inventory.quotation.create");
+  const canUpdate = can(keys, "inventory.quotation.update");
 
   return (
     <div>
-      <PageHeader title="Quotations" description="Sales quotations you can convert to orders." action={canCreate ? <LinkButton href={`${base}/dashboard/inventory/quotations/new`}>New quotation</LinkButton> : undefined} />
+      <PageHeader
+        title="Quotations"
+        description="Price quotes and customer estimates."
+        action={
+          canCreate ? <LinkButton href={`${base}/dashboard/inventory/quotations/new`}>New quotation</LinkButton> : undefined
+        }
+      />
       <Card>
         {quotations.length === 0 ? (
-          <EmptyState title="No quotations" action={canCreate ? <LinkButton href={`${base}/dashboard/inventory/quotations/new`}>New quotation</LinkButton> : undefined} />
+          <EmptyState
+            title="No quotations yet"
+            action={canCreate ? <LinkButton href={`${base}/dashboard/inventory/quotations/new`}>New quotation</LinkButton> : undefined}
+          />
         ) : (
           <ResponsiveList
             rows={quotations}
             href={(q) => `${base}/dashboard/inventory/quotations/${q.id}`}
-            primary={(q) => q.referenceNo || `QUO ${q.id}`}
+            primary={(q) => q.referenceNo || `QT ${q.id}`}
             secondary={(q) => q.customerName}
             meta={(q) => [{ label: "Status", value: <Badge tone={STATUS_TONE[q.status] ?? "neutral"}>{q.status}</Badge> }]}
             columns={[
-              { key: "ref", header: "Reference", cell: (q) => q.referenceNo || `QUO ${q.id}` },
+              { key: "ref", header: "Reference", cell: (q) => q.referenceNo || `QT ${q.id}` },
               { key: "customer", header: "Customer", cell: (q) => q.customerName },
               { key: "status", header: "Status", cell: (q) => <Badge tone={STATUS_TONE[q.status] ?? "neutral"}>{q.status}</Badge> },
-              { key: "expiry", header: "Expires", cell: (q) => q.expiryDate ? new Date(q.expiryDate).toLocaleDateString() : "—" },
+              { key: "expiry", header: "Expiry", cell: (q) => q.expiryDate ? new Date(q.expiryDate).toLocaleDateString() : "—" },
             ]}
+            actions={(q) => (
+              <div className="flex flex-wrap gap-2">
+                {canUpdate && (
+                  <LinkButton href={`${base}/dashboard/inventory/quotations/${q.id}/edit`} variant="secondary" size="sm">Edit</LinkButton>
+                )}
+              </div>
+            )}
           />
         )}
       </Card>

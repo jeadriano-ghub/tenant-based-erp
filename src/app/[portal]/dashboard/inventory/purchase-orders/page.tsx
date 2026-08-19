@@ -22,33 +22,34 @@ export default async function PurchaseOrdersPage({ params }: { params: Promise<{
   const keys = await getPermissionKeys(session.sub, session.isSuperAdmin);
   if (!can(keys, "inventory.purchase_order.view")) redirect(`${portal.base}/dashboard/inventory`);
 
-  if (!session.tenantId) {
-    return (
-      <div>
-        <PageHeader title="Purchase orders" description="Procurement orders and receipt status." />
-        <Card>
-          <p className="text-sm text-red-600">Inventory requires a tenant workspace. Contact your administrator.</p>
-        </Card>
-      </div>
-    );
-  }
-
   const base = portal.base;
-  const purchaseOrders = await prisma.purchaseOrder.findMany({
-    where: { tenantId: session.tenantId },
+  const purchaseOrders: any[] = await prisma.purchaseOrder.findMany({
+    where: { tenantId: session.tenantId! },
     orderBy: { createdAt: "desc" },
-  } as any);
+  });
   const supplierIds = Array.from(new Set(purchaseOrders.map((po: any) => po.supplierId).filter(Boolean)));
-  const suppliers = supplierIds.length ? await prisma.supplier.findMany({ where: { id: { in: supplierIds } }, select: { id: true, name: true } } as any) : [];
+  const suppliers: any[] = supplierIds.length
+    ? await prisma.supplier.findMany({ where: { id: { in: supplierIds } }, select: { id: true, name: true } })
+    : [];
   const supplierMap = new Map(suppliers.map((s: any) => [s.id, s.name]));
   const canCreate = can(keys, "inventory.purchase_order.create");
+  const canUpdate = can(keys, "inventory.purchase_order.update");
 
   return (
     <div>
-      <PageHeader title="Purchase orders" description="Procurement orders and receipt status." action={canCreate ? <LinkButton href={`${base}/dashboard/inventory/purchase-orders/new`}>New purchase order</LinkButton> : undefined} />
+      <PageHeader
+        title="Purchase orders"
+        description="Procurement orders and receipt status."
+        action={
+          canCreate ? <LinkButton href={`${base}/dashboard/inventory/purchase-orders/new`}>New purchase order</LinkButton> : undefined
+        }
+      />
       <Card>
         {purchaseOrders.length === 0 ? (
-          <EmptyState title="No purchase orders" action={canCreate ? <LinkButton href={`${base}/dashboard/inventory/purchase-orders/new`}>New purchase order</LinkButton> : undefined} />
+          <EmptyState
+            title="No purchase orders yet"
+            action={canCreate ? <LinkButton href={`${base}/dashboard/inventory/purchase-orders/new`}>New purchase order</LinkButton> : undefined}
+          />
         ) : (
           <ResponsiveList
             rows={purchaseOrders}
@@ -62,6 +63,13 @@ export default async function PurchaseOrdersPage({ params }: { params: Promise<{
               { key: "status", header: "Status", cell: (po) => <Badge tone={STATUS_TONE[po.status] ?? "neutral"}>{po.status}</Badge> },
               { key: "expected", header: "Expected", cell: (po) => po.expectedDate ? new Date(po.expectedDate).toLocaleDateString() : "—" },
             ]}
+            actions={(po) => (
+              <div className="flex flex-wrap gap-2">
+                {canUpdate && (
+                  <LinkButton href={`${base}/dashboard/inventory/purchase-orders/${po.id}/edit`} variant="secondary" size="sm">Edit</LinkButton>
+                )}
+              </div>
+            )}
           />
         )}
       </Card>

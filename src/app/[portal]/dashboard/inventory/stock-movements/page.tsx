@@ -1,17 +1,15 @@
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireSession, getPermissionKeys, can, resolvePortal } from "@/lib/auth";
-import { PageHeader, Card, Badge, EmptyState } from "@/components/ui";
+import { PageHeader, Card, Badge, LinkButton, EmptyState } from "@/components/ui";
 import { ResponsiveList } from "@/components/responsive-list";
 
 export const dynamic = "force-dynamic";
 
 const TYPE_TONE: Record<string, "neutral" | "success" | "warning" | "danger" | "brand"> = {
-  PURCHASE: "success",
-  SALE: "danger",
+  STOCK_IN: "success",
+  STOCK_OUT: "danger",
   ADJUSTMENT: "warning",
-  RETURN: "brand",
-  TRANSFER: "neutral",
 };
 
 export default async function StockMovementsPage({ params }: { params: Promise<{ portal: string }> }) {
@@ -24,46 +22,57 @@ export default async function StockMovementsPage({ params }: { params: Promise<{
   if (!can(keys, "inventory.stock_movement.view")) redirect(`${portal.base}/dashboard/inventory`);
 
   const base = portal.base;
-  const rawMovements = await prisma.stockMovement.findMany({
+  const stockMovements: any[] = await prisma.stockMovement.findMany({
     where: { tenantId: session.tenantId! },
     orderBy: { createdAt: "desc" },
   });
-  const productIds = Array.from(new Set(rawMovements.map((m) => m.productId)));
-  const products = await prisma.product.findMany({ where: { id: { in: productIds } }, select: { id: true, name: true } } as any);
-  const productMap = new Map(products.map((p: any) => [p.id, p]));
-  const movements = rawMovements.map((m) => ({ ...m, product: productMap.get(m.productId) || null } as any));
+  const productIds = Array.from(new Set(stockMovements.map((sm: any) => sm.productId).filter(Boolean)));
+  const products: any[] = productIds.length
+    ? await prisma.product.findMany({ where: { id: { in: productIds } }, select: { id: true, name: true } })
+    : [];
+  const productMap = new Map(products.map((p: any) => [p.id, p.name]));
   const canCreate = can(keys, "inventory.stock_movement.create");
 
   return (
     <div>
       <PageHeader
         title="Stock movements"
-        description="All inbound, outbound, and adjustment records."
+        description="Stock in, stock out, and manual adjustments."
         action={
-          canCreate ? (
-            <a className="rounded-lg bg-[var(--brand)] px-4 py-2 text-sm font-medium text-white shadow-sm hover:opacity-90" href={`${base}/dashboard/inventory/pos`}>
-              New movement
-            </a>
-          ) : undefined
+          canCreate ? <LinkButton href={`${base}/dashboard/inventory/stock-movements/new`}>New stock movement</LinkButton> : undefined
         }
       />
       <Card>
-        {movements.length === 0 ? (
-          <EmptyState title="No stock movements" action={canCreate ? <a className="rounded-lg bg-[var(--brand)] px-4 py-2 text-sm font-medium text-white shadow-sm hover:opacity-90" href={`${base}/dashboard/inventory/pos`}>Record movement</a> : undefined} />
+        {stockMovements.length === 0 ? (
+          <EmptyState
+            title="No stock movements yet"
+            action={canCreate ? <LinkButton href={`${base}/dashboard/inventory/stock-movements/new`}>New stock movement</LinkButton> : undefined}
+          />
         ) : (
           <ResponsiveList
-            rows={movements}
-            href={(m) => `${base}/dashboard/inventory/stock-movements/${m.id}`}
-            primary={(m) => m.product?.name || m.productId}
-            secondary={(m) => `${m.type} · ${m.quantity}`}
-            meta={(m) => [{ label: "Type", value: <Badge tone={TYPE_TONE[m.type] ?? "neutral"}>{m.type}</Badge> }]}
-            columns={[
-              { key: "product", header: "Product", cell: (m) => m.product?.name || m.productId },
-              { key: "type", header: "Type", cell: (m) => <Badge tone={TYPE_TONE[m.type] ?? "neutral"}>{m.type}</Badge> },
-              { key: "qty", header: "Quantity", cell: (m) => m.quantity },
-              { key: "ref", header: "Reference", cell: (m) => m.reference || "—" },
-              { key: "createdAt", header: "Date", cell: (m) => m.createdAt ? new Date(m.createdAt).toLocaleString() : "—" },
+            rows={stockMovements}
+            href={(sm) => `${base}/dashboard/inventory/stock-movements/${sm.id}`}
+            primary={(sm) => productMap.get(sm.productId) || sm.productId}
+            secondary={(sm) => sm.referenceNo || `SM ${sm.id}`}
+            meta={(sm) => [
+              { label: "Type", value: <Badge tone={TYPE_TONE[sm.movementType] ?? "neutral"}>{sm.movementType}</Badge> },
+              { label: "Qty", value: `${sm.quantity}` },
+              { label: "Date", value: sm.movementDate ? new Date(sm.movementDate).toLocaleDateString() : "—" },
             ]}
+            columns={[
+              { key: "ref", header: "Reference", cell: (sm) => sm.referenceNo || `SM ${sm.id}` },
+              { key: "product", header: "Product", cell: (sm) => productMap.get(sm.productId) || sm.productId },
+              { key: "type", header: "Type", cell: (sm) => <Badge tone={TYPE_TONE[sm.movementType] ?? "neutral"}>{sm.movementType}</Badge> },
+              { key: "qty", header: "Quantity", cell: (sm) => sm.quantity },
+              { key: "date", header: "Date", cell: (sm) => sm.movementDate ? new Date(sm.movementDate).toLocaleDateString() : "—" },
+            ]}
+            actions={(sm) => (
+              <div className="flex flex-wrap gap-2">
+                {canCreate && (
+                  <LinkButton href={`${base}/dashboard/inventory/stock-movements/${sm.id}`} variant="secondary" size="sm">View</LinkButton>
+                )}
+              </div>
+            )}
           />
         )}
       </Card>

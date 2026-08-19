@@ -23,18 +23,28 @@ export default async function SalesOrdersPage({ params }: { params: Promise<{ po
   if (!can(keys, "inventory.sales_order.view")) redirect(`${portal.base}/dashboard/inventory`);
 
   const base = portal.base;
-  const salesOrders = await prisma.salesOrder.findMany({
+  const salesOrders: any[] = await prisma.salesOrder.findMany({
     where: { tenantId: session.tenantId! },
     orderBy: { createdAt: "desc" },
-  } as any);
+  });
   const canCreate = can(keys, "inventory.sales_order.create");
+  const canUpdate = can(keys, "inventory.sales_order.update");
 
   return (
     <div>
-      <PageHeader title="Sales orders" description="Order fulfillment and stock-out flow." action={canCreate ? <LinkButton href={`${base}/dashboard/inventory/sales-orders/new`}>New sales order</LinkButton> : undefined} />
+      <PageHeader
+        title="Sales orders"
+        description="Order fulfillment and stock-out flow."
+        action={
+          canCreate ? <LinkButton href={`${base}/dashboard/inventory/sales-orders/new`}>New sales order</LinkButton> : undefined
+        }
+      />
       <Card>
         {salesOrders.length === 0 ? (
-          <EmptyState title="No sales orders" action={canCreate ? <LinkButton href={`${base}/dashboard/inventory/sales-orders/new`}>New sales order</LinkButton> : undefined} />
+          <EmptyState
+            title="No sales orders yet"
+            action={canCreate ? <LinkButton href={`${base}/dashboard/inventory/sales-orders/new`}>New sales order</LinkButton> : undefined}
+          />
         ) : (
           <ResponsiveList
             rows={salesOrders}
@@ -47,6 +57,13 @@ export default async function SalesOrdersPage({ params }: { params: Promise<{ po
               { key: "customer", header: "Customer", cell: (so) => so.customerName },
               { key: "status", header: "Status", cell: (so) => <Badge tone={STATUS_TONE[so.status] ?? "neutral"}>{so.status}</Badge> },
             ]}
+            actions={(so) => (
+              <div className="flex flex-wrap gap-2">
+                {canUpdate && (
+                  <LinkButton href={`${base}/dashboard/inventory/sales-orders/${so.id}/edit`} variant="secondary" size="sm">Edit</LinkButton>
+                )}
+              </div>
+            )}
           />
         )}
       </Card>
