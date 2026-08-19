@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireSession, getPermissionKeys, can, resolvePortal } from "@/lib/auth";
 import { PageHeader, Card, LinkButton } from "@/components/ui";
+import { PLATFORM_ONLY_KEYS } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +14,10 @@ export default async function PermissionsPage({ params }: { params: Promise<{ po
   if (!session) redirect(`${portal.base}/login`);
   const keys = await getPermissionKeys(session.sub, session.isSuperAdmin);
   if (!can(keys, "permission.view")) redirect(`${portal.base}/dashboard`);
-  // Tenant users never see the platform permission catalogue.
-  if (!portal.isAdminPortal) notFound();
   const isAdminPortal = portal.isAdminPortal;
 
-  const permissions = await prisma.permission.findMany({ orderBy: [{ module: "asc" }, { key: "asc" }] });
+  const allPermissions = await prisma.permission.findMany({ orderBy: [{ module: "asc" }, { key: "asc" }] });
+  const permissions = isAdminPortal ? allPermissions : allPermissions.filter((p) => !PLATFORM_ONLY_KEYS.has(p.key));
   const grouped = permissions.reduce<Record<string, typeof permissions>>((acc, p) => {
     (acc[p.module] ??= []).push(p);
     return acc;
@@ -32,7 +32,7 @@ export default async function PermissionsPage({ params }: { params: Promise<{ po
         description={
           canManage
             ? "The platform-owned permission catalogue. Tenants combine these into roles."
-            : "Read-only catalogue. Combine these into roles under Roles."
+            : "Combine these permissions into roles under Roles."
         }
         action={canManage ? <LinkButton href={`${portal.base}/dashboard/permissions/new`}>New permission</LinkButton> : undefined}
       />

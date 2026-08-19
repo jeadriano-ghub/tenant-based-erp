@@ -82,4 +82,13 @@ export const TENANT_ADMIN_KEYS = [
   "user.view", "user.create", "user.update", "user.delete",
   "role.view", "role.create", "role.update", "role.delete",
   "location.view", "location.create", "location.update", "location.delete",
+  "inventory.product.view", "inventory.product.create", "inventory.product.update", "inventory.product.delete",
+  "inventory.category.view", "inventory.category.create", "inventory.category.update", "inventory.category.delete",
+  "inventory.brand.view", "inventory.brand.create", "inventory.brand.update", "inventory.brand.delete",
+  "inventory.supplier.view", "inventory.supplier.create", "inventory.supplier.update", "inventory.supplier.delete",
+  "inventory.purchase_order.view", "inventory.purchase_order.create", "inventory.purchase_order.update", "inventory.purchase_order.delete",
+  "inventory.sales_order.view", "inventory.sales_order.create", "inventory.sales_order.update", "inventory.sales_order.delete",
+  "inventory.quotation.view", "inventory.quotation.create", "inventory.quotation.update", "inventory.quotation.delete",
+  "inventory.stock_movement.view", "inventory.stock_movement.create",
+  "inventory.pos.view", "inventory.pos.create",
 ];
