@@ -175,8 +175,6 @@ function SignOutControl({ signOut }: { signOut: ReactNode }) {
   );
 }
 
-const isGrouped = (nav: NavItem[] | NavGroup[]): nav is NavGroup[] => nav.length > 0 && "items" in nav[0];
-
 export function AppShell({
   nav, title, subtitle, logoUrl, defaultLogoUrl, user, signOut, bell, children,
 }: {
@@ -206,10 +204,14 @@ export function AppShell({
   );
 
   const renderNav = (onNavigate?: () => void) => {
-    if (isGrouped(nav)) {
-      return nav.map((group) => (<NavGroupSection key={group.label} group={group} onNavigate={onNavigate} />));
-    }
-    return <NavLinks items={nav} onNavigate={onNavigate} />;
+    const groups = nav.filter((n): n is NavGroup => "items" in n);
+    const items = nav.filter((n): n is NavItem => !("items" in n));
+    return (
+      <>
+        {items.length > 0 && <NavLinks items={items} onNavigate={onNavigate} />}
+        {groups.map((group) => (<NavGroupSection key={group.label} group={group} onNavigate={onNavigate} />))}
+      </>
+    );
   };
 
   return (
