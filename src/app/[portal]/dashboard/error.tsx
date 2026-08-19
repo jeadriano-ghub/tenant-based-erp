@@ -13,8 +13,7 @@ export default class DashboardErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: unknown) {
-    // Intentionally silent in production UI; use browser devtools for details.
-    // eslint-disable-next-line no-console
+    // Use browser devtools for details if needed.
     console.error("[dashboard-error]", error, info);
   }
 

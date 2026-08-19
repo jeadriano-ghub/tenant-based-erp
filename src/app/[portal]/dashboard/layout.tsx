@@ -36,18 +36,7 @@ export default async function DashboardLayout({
     .filter((n) => n.show)
     .map(({ href, label }) => ({ href, label } as { href: string; label: string }));
 
-  const inventoryGroup: { label: string; items: { href: string; label: string }[] } | null = !portal.isAdminPortal &&
-    (has("inventory.view") ||
-      has("inventory.product.view") ||
-      has("inventory.category.view") ||
-      has("inventory.brand.view") ||
-      has("inventory.supplier.view") ||
-      has("inventory.purchase_order.view") ||
-      has("inventory.stock_in.view") ||
-      has("inventory.sales_order.view") ||
-      has("inventory.quotation.view") ||
-      has("inventory.pos.view") ||
-      has("inventory.stock_movement.view"))
+  const inventoryGroup: { label: string; items: { href: string; label: string }[] } | null = !portal.isAdminPortal
     ? {
         label: "Inventory",
         items: [
