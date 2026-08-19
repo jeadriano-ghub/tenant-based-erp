@@ -26,9 +26,15 @@ export function NotificationBell({ portal }: { portal: string }) {
   const ref = useRef<HTMLDivElement>(null);
 
   async function refresh() {
-    const [list, count] = await Promise.all([listNotifications(portal), unreadCount(portal)]);
-    setItems(list as Note[]);
-    setUnread(count);
+    try {
+      const [list, count] = await Promise.all([listNotifications(portal), unreadCount(portal)]);
+      setItems(list as Note[]);
+      setUnread(count);
+    } catch {
+      // Avoid crashing the dashboard shell on backend/storage failures.
+      setItems([]);
+      setUnread(0);
+    }
   }
 
   useEffect(() => {
