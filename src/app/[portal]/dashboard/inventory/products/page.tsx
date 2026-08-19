@@ -24,9 +24,14 @@ export default async function ProductsPage({ params }: { params: Promise<{ porta
   const base = portal.base;
   const products = await prisma.product.findMany({
     where: { tenantId: session.tenantId! },
-    include: { brand: true, category: true },
     orderBy: { updatedAt: "desc" },
   });
+
+  const categories = await prisma.category.findMany({ where: { tenantId: session.tenantId! }, orderBy: { name: "asc" } });
+  const categoryMap = new Map(categories.map((c: any) => [c.id, c.name as string]));
+
+  const brandRows = await prisma.brand.findMany({ where: { tenantId: session.tenantId! }, select: { id: true, name: true } });
+  const brandMap = new Map(brandRows.map((b: any) => [b.id, b.name as string]));
 
   const canCreate = can(keys, "inventory.product.create");
   const canUpdate = can(keys, "inventory.product.update");
@@ -51,15 +56,15 @@ export default async function ProductsPage({ params }: { params: Promise<{ porta
             rows={products}
             href={(p) => `${base}/dashboard/inventory/products/${p.id}/edit`}
             primary={(p) => `${p.name} ${p.sku ? `(${p.sku})` : ""}`}
-            secondary={(p) => ((p.brand ?? p.category ?? {}) as { name?: string }).name || ""}
+            secondary={(p) => brandMap.get(p.brandId || "") || categoryMap.get(p.categoryId) || ""}
             meta={(p) => [
               { label: "Type", value: PRODUCT_TYPE_LABEL[p.productType] || p.productType },
               { label: "Price", value: p.sellingPrice ? `₱${Number(p.sellingPrice).toFixed(2)}` : "—" },
             ]}
             columns={[
               { key: "name", header: "Product", cell: (p) => `${p.name}${p.sku ? ` (${p.sku})` : ""}` },
-              { key: "category", header: "Category", cell: (p) => ((p.category ?? {}) as { name?: string }).name || "—" },
-              { key: "brand", header: "Brand", cell: (p) => ((p.brand ?? {}) as { name?: string }).name || "—" },
+              { key: "category", header: "Category", cell: (p) => categoryMap.get(p.categoryId) || "—" },
+              { key: "brand", header: "Brand", cell: (p) => brandMap.get(p.brandId || "") || "—" },
               { key: "type", header: "Type", cell: (p) => <Badge>{PRODUCT_TYPE_LABEL[p.productType] || p.productType}</Badge> },
               { key: "price", header: "Selling price", cell: (p) => <span>{p.sellingPrice ? `₱${Number(p.sellingPrice).toFixed(2)}` : "—"}</span> },
             ]}
