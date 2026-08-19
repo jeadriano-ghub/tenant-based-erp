@@ -15,8 +15,19 @@ export default async function SuppliersPage({ params }: { params: Promise<{ port
   const keys = await getPermissionKeys(session.sub, session.isSuperAdmin);
   if (!can(keys, "inventory.supplier.view")) redirect(`${portal.base}/dashboard/inventory`);
 
+  if (!session.tenantId) {
+    return (
+      <div>
+        <PageHeader title="Suppliers" description="Vendor records for purchasing." />
+        <Card>
+          <p className="text-sm text-red-600">Inventory requires a tenant workspace. Contact your administrator.</p>
+        </Card>
+      </div>
+    );
+  }
+
   const base = portal.base;
-  const suppliers = await prisma.supplier.findMany({ where: { tenantId: session.tenantId! }, orderBy: { createdAt: "desc" } } as any);
+  const suppliers = await prisma.supplier.findMany({ where: { tenantId: session.tenantId }, orderBy: { createdAt: "desc" } });
   const canCreate = can(keys, "inventory.supplier.create");
 
   return (

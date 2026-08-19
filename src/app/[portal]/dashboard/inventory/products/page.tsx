@@ -21,9 +21,20 @@ export default async function ProductsPage({ params }: { params: Promise<{ porta
   const keys = await getPermissionKeys(session.sub, session.isSuperAdmin);
   if (!can(keys, "inventory.product.view")) redirect(`${portal.base}/dashboard/inventory`);
 
+  if (!session.tenantId) {
+    return (
+      <div>
+        <PageHeader title="Products" description="Item master data by type, category, and brand." />
+        <Card>
+          <p className="text-sm text-red-600">Inventory requires a tenant workspace. Contact your administrator.</p>
+        </Card>
+      </div>
+    );
+  }
+
   const base = portal.base;
   const products = await prisma.product.findMany({
-    where: { tenantId: session.tenantId! },
+    where: { tenantId: session.tenantId },
     orderBy: { updatedAt: "desc" },
   });
 

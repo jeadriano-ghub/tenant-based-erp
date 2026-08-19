@@ -22,9 +22,20 @@ export default async function PurchaseOrdersPage({ params }: { params: Promise<{
   const keys = await getPermissionKeys(session.sub, session.isSuperAdmin);
   if (!can(keys, "inventory.purchase_order.view")) redirect(`${portal.base}/dashboard/inventory`);
 
+  if (!session.tenantId) {
+    return (
+      <div>
+        <PageHeader title="Purchase orders" description="Procurement orders and receipt status." />
+        <Card>
+          <p className="text-sm text-red-600">Inventory requires a tenant workspace. Contact your administrator.</p>
+        </Card>
+      </div>
+    );
+  }
+
   const base = portal.base;
   const purchaseOrders = await prisma.purchaseOrder.findMany({
-    where: { tenantId: session.tenantId! },
+    where: { tenantId: session.tenantId },
     orderBy: { createdAt: "desc" },
   } as any);
   const supplierIds = Array.from(new Set(purchaseOrders.map((po: any) => po.supplierId).filter(Boolean)));
