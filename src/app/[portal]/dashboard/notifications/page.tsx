@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireSession, getPermissionKeys, can, resolvePortal } from "@/lib/auth";
 import { PageHeader, Card, Badge, EmptyState, LinkButton, Button } from "@/components/ui";
 import { markReadFormAction, markAllReadFormAction, deleteNotificationFormAction } from "./actions";
+import { humanTime } from "@/lib/datetime";
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +59,7 @@ export default async function NotificationsPage({ params }: { params: Promise<{ 
                     {n.recipientId && <Badge>direct</Badge>}
                   </div>
                   <p className="mt-0.5 text-sm text-[var(--muted)]">{n.message}</p>
-                  <p className="mt-1 text-xs text-[var(--muted)]">{new Date(n.createdAt).toLocaleString()}</p>
+                  <p className="mt-1 text-xs text-[var(--muted)]">{humanTime(n.createdAt)}</p>
                 </div>
                 <div className="flex shrink-0 flex-col gap-2">
                   {!n.read && (

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { listNotifications, unreadCount, markReadAction, markAllReadAction } from "./actions";
+import { humanTime } from "@/lib/datetime";
 
 type Note = {
   id: string;
@@ -112,6 +113,7 @@ export function NotificationBell({ portal }: { portal: string }) {
                       <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${tone[n.type] ?? tone.INFO}`}>{n.type}</span>
                     </span>
                     <span className="mt-0.5 block text-xs text-[var(--muted)]">{n.message}</span>
+                    <span className="mt-0.5 block text-[11px] text-[var(--muted)]/70">{humanTime(n.createdAt)}</span>
                   </span>
                 </button>
               ))
