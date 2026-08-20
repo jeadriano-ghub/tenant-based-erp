@@ -39,6 +39,16 @@ function str(fd: FormData, k: string) {
   return String(fd.get(k) ?? "").trim();
 }
 
+function parseJsonArray(v: string | undefined): any[] {
+  if (!v) return [];
+  try {
+    const arr = JSON.parse(v);
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
 /** Temporary password that satisfies the standard password policy. */
 function generatePassword() {
   const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -747,6 +757,9 @@ export async function saveProductAction(_p: ActionState, fd: FormData): Promise<
     sellingPrice: str(fd, "sellingPrice"),
     minStockLevel: str(fd, "minStockLevel"),
     reorderPoint: str(fd, "reorderPoint"),
+    pricesJson: str(fd, "pricesJson"),
+    barcodesJson: str(fd, "barcodesJson"),
+    serialsJson: str(fd, "serialsJson"),
   });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const d = parsed.data;
@@ -775,12 +788,45 @@ export async function saveProductAction(_p: ActionState, fd: FormData): Promise<
     sellingPrice: d.sellingPrice ? parseFloat(d.sellingPrice) : null,
     minStockLevel: d.minStockLevel ? parseInt(d.minStockLevel, 10) : 0,
     reorderPoint: d.reorderPoint ? parseInt(d.reorderPoint, 10) : 0,
+    prices: parseJsonArray(d.pricesJson),
   };
 
   const beforeProduct = id ? await prisma.product.findUnique({ where: { id } }) : null;
   const saved = id
     ? await prisma.product.update({ where: { id }, data })
     : await prisma.product.create({ data: { ...data, tenantId: session.tenantId } });
+
+  // Price tiers are stored on the product.prices JSON column (above).
+  // Serialized + Barcode products also get child records for scanning/lookup.
+  if (d.productType === "BARCODE" && d.barcodesJson) {
+    const list = parseJsonArray(d.barcodesJson) as any[];
+    if (list.length) {
+      await prisma.productBarcode.deleteMany({ where: { productId: saved.id } });
+      await prisma.productBarcode.createMany({
+        data: list.map((b) => ({
+          tenantId: session.tenantId!,
+          productId: saved.id,
+          barcode: String(b.barcode),
+          format: String(b.format || "CODE128"),
+          isPrimary: Boolean(b.isPrimary),
+        })),
+      });
+    }
+  }
+  if (d.productType === "SERIALIZED" && d.serialsJson) {
+    const list = parseJsonArray(d.serialsJson) as any[];
+    if (list.length) {
+      await prisma.productSerial.deleteMany({ where: { productId: saved.id } });
+      await prisma.productSerial.createMany({
+        data: list.map((s) => ({
+          tenantId: session.tenantId!,
+          productId: saved.id,
+          serialNo: String(s.serialNo),
+          status: "AVAILABLE",
+        })),
+      });
+    }
+  }
 
   await recordChange({
     tenantId: session.tenantId,

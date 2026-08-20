@@ -115,6 +115,9 @@ export const productSchema = z.object({
   sellingPrice: z.string().optional().or(z.literal("")),
   minStockLevel: z.string().optional().or(z.literal("")),
   reorderPoint: z.string().optional().or(z.literal("")),
+  pricesJson: z.string().optional().or(z.literal("")),
+  barcodesJson: z.string().optional().or(z.literal("")),
+  serialsJson: z.string().optional().or(z.literal("")),
 });
 
 export const purchaseOrderSchema = z.object({

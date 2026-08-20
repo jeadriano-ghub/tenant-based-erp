@@ -2,8 +2,9 @@ import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireSession, getPermissionKeys, can, resolvePortal } from "@/lib/auth";
 import { PageHeader, Card, FormSection } from "@/components/ui";
-import { ActionForm, Field, Select } from "@/components/form";
+import { ActionForm, Field } from "@/components/form";
 import { saveProductAction } from "../../../actions";
+import { ProductFormFields } from "../ProductFormFields";
 
 export const dynamic = "force-dynamic";
 
@@ -28,27 +29,23 @@ export default async function NewProductPage({ params }: { params: Promise<{ por
           <FormSection title="Identity" description="Core product details used in transactions.">
             <Field label="SKU" name="sku" required />
             <Field label="Product name" name="name" required />
-            <Select label="Product type" name="productType" options={["SERIALIZED", "NON_SERIALIZED", "BARCODE"]} defaultValue="NON_SERIALIZED" />
-            <select required name="categoryId" className="rounded-lg border bg-[var(--background)] px-3 py-2 text-sm">
+            <ProductFormFields productType="NON_SERIALIZED" />
+            <select required name="categoryId" defaultValue="" className="w-full rounded-lg border bg-[var(--surface)] px-3 py-2.5 text-sm outline-none transition-shadow focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/20">
               <option value="">Select category</option>
-              {categories.map((c) => (
+              {categories.map((c: any) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
-            <select name="brandId" className="rounded-lg border bg-[var(--background)] px-3 py-2 text-sm">
-              <option value="">—</option>
-              {brands.map((b) => (
+            <select name="brandId" defaultValue="" className="w-full rounded-lg border bg-[var(--surface)] px-3 py-2.5 text-sm outline-none transition-shadow focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/20">
+              <option value="">No brand</option>
+              {brands.map((b: any) => (
                 <option key={b.id} value={b.id}>{b.name}</option>
               ))}
             </select>
             <Field label="Unit of measure" name="unitOfMeasure" defaultValue="pc" />
-            <Field label="Description" name="description" />
-          </FormSection>
-          <FormSection title="Pricing & stock">
-            <Field label="Cost price" name="costPrice" type="number" />
-            <Field label="Selling price" name="sellingPrice" type="number" />
-            <Field label="Min stock level" name="minStockLevel" type="number" defaultValue="0" />
-            <Field label="Reorder point" name="reorderPoint" type="number" defaultValue="0" />
+            <div className="sm:col-span-2">
+              <Field label="Description" name="description" />
+            </div>
           </FormSection>
         </ActionForm>
       </Card>

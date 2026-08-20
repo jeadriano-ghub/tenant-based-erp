@@ -84,6 +84,7 @@ export function ActionForm({
 
 const controlClass =
   "w-full rounded-lg border bg-[var(--surface)] px-3 py-2.5 text-sm outline-none transition-shadow placeholder:text-[var(--muted)] focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/20 sm:py-2";
+export { controlClass };
 
 export function Field({
   label, name, type = "text", required, defaultValue, placeholder, hint, span,
