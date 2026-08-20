@@ -44,7 +44,7 @@ export default async function DashboardLayout({
         label: "Inventory",
         items: [
           { href: `${base}/dashboard/inventory/products`, label: "Products" },
-          { href: `${base}/dashboard/inventory/categories/manage`, label: "Manage Categories", show: has("inventory.category.view") },
+          { href: `${base}/dashboard/inventory/categories/manage`, label: "Manage Categories", show: has("inventory.product.view") },
           { href: `${base}/dashboard/inventory/suppliers`, label: "Suppliers" },
           { href: `${base}/dashboard/inventory/purchase-orders`, label: "Purchase Orders" },
           { href: `${base}/dashboard/inventory/quotations`, label: "Quotations" },

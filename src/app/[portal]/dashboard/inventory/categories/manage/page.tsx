@@ -24,7 +24,7 @@ export default async function ManageCategoriesPage({ params }: { params: Promise
   const { session } = await requireSession(portal);
   if (!session) redirect(`${portal.base}/login`);
   const keys = await getPermissionKeys(session.sub, session.isSuperAdmin);
-  if (!can(keys, "inventory.category.view")) redirect(`${portal.base}/dashboard/inventory`);
+  if (!can(keys, "inventory.product.view")) redirect(`${portal.base}/dashboard/inventory`);
 
   const base = portal.base;
   const tenantId = session.tenantId!;
