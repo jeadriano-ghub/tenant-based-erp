@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
-import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { Client } from "pg";
 
 // TEMPORARY migration endpoint. Protected by a one-time token.
-// Runs `prisma db push` using the runtime DATABASE_URL (which Vercel injects
-// into the deployed app). Removed after the inventory tables are created.
+// Executes the bundled inventory migration SQL against the runtime DATABASE_URL
+// (which Vercel injects into the deployed app). Removed after the inventory
+// tables are created.
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -19,19 +21,29 @@ export async function POST(request: Request) {
   if (token !== TOKEN) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    return NextResponse.json({ ok: false, error: "DATABASE_URL not set in runtime env" }, { status: 500 });
+  }
+  // The migration script is committed at the project root and ships with the deploy.
+  const sqlPath = join(process.cwd(), "inventory_migration.sql");
+  let sql: string;
   try {
-    const prismaBin = join(process.cwd(), "node_modules", "prisma", "build", "index.js");
-    const out = execSync(`node "${prismaBin}" db push --accept-data-loss`, {
-      cwd: process.cwd(),
-      env: process.env,
-      timeout: 55000,
-      encoding: "utf8",
-    });
-    return NextResponse.json({ ok: true, output: out.toString() });
+    sql = readFileSync(sqlPath, "utf8");
+  } catch (e: any) {
+    return NextResponse.json({ ok: false, error: `cannot read migration file: ${String(e?.message || e)}` }, { status: 500 });
+  }
+  const client = new Client({ connectionString: databaseUrl });
+  try {
+    await client.connect();
+    await client.query(sql);
+    return NextResponse.json({ ok: true, message: "inventory migration applied" });
   } catch (e: any) {
     return NextResponse.json(
-      { ok: false, error: String(e?.message || e), stdout: e?.stdout?.toString?.() || "", stderr: e?.stderr?.toString?.() || "" },
+      { ok: false, error: String(e?.message || e) },
       { status: 500 },
     );
+  } finally {
+    await client.end().catch(() => {});
   }
 }
