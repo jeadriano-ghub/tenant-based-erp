@@ -19,6 +19,7 @@ function parseFields(raw: unknown): CategorySpecField[] {
       type: (f.type === "select" || f.type === "number") ? f.type : "text",
       required: Boolean(f.required),
       options: Array.isArray(f.options) ? f.options.join(", ") : (f.options ?? ""),
+      status: (f.status === "disabled" || f.status === "hidden") ? f.status : "active",
     }));
   } catch {
     return [];
