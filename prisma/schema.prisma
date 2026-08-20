@@ -101,6 +101,7 @@ model Tenant {
   stockIns      StockIn[]
   salesOrders   SalesOrder[]
   quotations    Quotation[]
+  supplierBusinesses SupplierBusiness[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -318,6 +319,8 @@ model Category {
   parent      Category? @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
   children    Category[] @relation("CategoryHierarchy")
   isActive    Boolean   @default(true)
+  // Array of custom spec fields defined for this category. Each: { key, label, type, required, options? }
+  fields      Json?
 
   products    Product[]
 
@@ -363,8 +366,11 @@ model Supplier {
   tin            String?
   businessRegNo  String?
   notes          String?
+  // Payment term in days (e.g. 30 = net-30). Defaults to net-30 on a PO.
+  termsDays      Int?      @default(30)
   isActive       Boolean   @default(true)
 
+  businesses     SupplierBusiness[]
   purchaseOrders PurchaseOrder[]
 
   createdAt DateTime @default(now())
@@ -372,6 +378,25 @@ model Supplier {
 
   @@index([tenantId])
   @@index([tenantId, name])
+}
+
+// A supplier can trade under several business names / TINs (e.g. aliases).
+model SupplierBusiness {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplierId    String
+  supplier      Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  businessName  String
+  tin           String?
+  businessRegNo String?
+  isPrimary     Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, supplierId])
 }
 
 model Product {
@@ -393,6 +418,7 @@ model Product {
   reorderPoint    Int?         @default(0)
   isActive        Boolean      @default(true)
   prices          Json?        // array of price tiers: { name, price, minQty? }
+  specs           Json?        // category-specific spec values: [{ key, value }]
 
   purchaseOrderItems PurchaseOrderItem[]
   stockInItems       StockInItem[]
@@ -509,6 +535,7 @@ model PurchaseOrder {
   referenceNo     String?
   expectedDate    DateTime?
   receivedDate    DateTime?
+  termsDays       Int?     // payment term in days (inherited from supplier)
   notes           String?
   createdById     String?
   createdBy       User?              @relation(fields: [createdById], references: [id], onDelete: SetNull)

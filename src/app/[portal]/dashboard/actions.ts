@@ -552,10 +552,24 @@ export async function saveCategoryAction(_p: ActionState, fd: FormData): Promise
 
   const parentId = d.parentId || null;
 
+  // Spec fields are defined only on main categories (subcategories inherit).
+  let fields: unknown = undefined;
+  if (!parentId) {
+    const raw = str(fd, "fieldsJson");
+    if (raw) {
+      try {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) fields = arr;
+      } catch {
+        fields = undefined;
+      }
+    }
+  }
+
   const dup = await prisma.category.findFirst({ where: { tenantId: session.tenantId, name: d.name } });
   if (dup && dup.id !== id) return { error: "A category with that name already exists." };
 
-  const data = { name: d.name, description: d.description || null, parentId };
+  const data = { name: d.name, description: d.description || null, parentId, ...(parentId ? {} : { fields }) } as any;
 
   const beforeCat = id ? await prisma.category.findUnique({ where: { id } }) : null;
   const saved = id
@@ -682,6 +696,18 @@ export async function saveSupplierAction(_p: ActionState, fd: FormData): Promise
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const d = parsed.data;
 
+  // Gather repeatable trading businesses (biz_name_0, biz_name_1, ...).
+  const businesses: { businessName: string; tin: string; businessRegNo: string }[] = [];
+  for (let i = 0; fd.get(`biz_name_${i}`) !== null; i++) {
+    const bn = str(fd, `biz_name_${i}`);
+    if (!bn) continue;
+    businesses.push({
+      businessName: bn,
+      tin: str(fd, `biz_tin_${i}`),
+      businessRegNo: str(fd, `biz_reg_${i}`),
+    });
+  }
+
   const data = {
     name: d.name,
     contactPerson: d.contactPerson || null,
@@ -696,12 +722,28 @@ export async function saveSupplierAction(_p: ActionState, fd: FormData): Promise
     tin: d.tin || null,
     businessRegNo: d.businessRegNo || null,
     notes: d.notes || null,
+    termsDays: d.termsDays ? parseInt(d.termsDays, 10) : 30,
   };
 
   const beforeSupplier = id ? await prisma.supplier.findUnique({ where: { id } }) : null;
   const saved = id
     ? await prisma.supplier.update({ where: { id }, data })
     : await prisma.supplier.create({ data: { ...data, tenantId: session.tenantId } });
+
+  // Sync trading businesses: replace existing with submitted set.
+  await prisma.supplierBusiness.deleteMany({ where: { supplierId: saved.id } });
+  if (businesses.length) {
+    await prisma.supplierBusiness.createMany({
+      data: businesses.map((b, idx) => ({
+        tenantId: session.tenantId!,
+        supplierId: saved.id,
+        businessName: b.businessName,
+        tin: b.tin || null,
+        businessRegNo: b.businessRegNo || null,
+        isPrimary: idx === 0,
+      })),
+    });
+  }
 
   await recordChange({
     tenantId: session.tenantId,
@@ -760,6 +802,7 @@ export async function saveProductAction(_p: ActionState, fd: FormData): Promise<
     pricesJson: str(fd, "pricesJson"),
     barcodesJson: str(fd, "barcodesJson"),
     serialsJson: str(fd, "serialsJson"),
+    specJson: str(fd, "specJson"),
   });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const d = parsed.data;
@@ -789,6 +832,7 @@ export async function saveProductAction(_p: ActionState, fd: FormData): Promise<
     minStockLevel: d.minStockLevel ? parseInt(d.minStockLevel, 10) : 0,
     reorderPoint: d.reorderPoint ? parseInt(d.reorderPoint, 10) : 0,
     prices: parseJsonArray(d.pricesJson),
+    specs: parseJsonArray(d.specJson),
   };
 
   const beforeProduct = id ? await prisma.product.findUnique({ where: { id } }) : null;
@@ -859,7 +903,7 @@ export async function savePurchaseOrderAction(_p: ActionState, fd: FormData): Pr
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const d = parsed.data;
 
-  const supplier = await prisma.supplier.findUnique({ where: { id: d.supplierId } });
+  const supplier = await prisma.supplier.findUnique({ where: { id: d.supplierId } } as any);
   if (!supplier || supplier.tenantId !== session.tenantId) return { error: "Invalid supplier." };
 
   const data = {
@@ -867,12 +911,32 @@ export async function savePurchaseOrderAction(_p: ActionState, fd: FormData): Pr
     supplierId: d.supplierId,
     expectedDate: toDate(fd.get("expectedDate")),
     notes: d.notes || null,
+    termsDays: str(fd, "termsDays") ? parseInt(str(fd, "termsDays"), 10) : (supplier.termsDays ?? 30),
   };
 
   const beforePo = id ? await prisma.purchaseOrder.findUnique({ where: { id } }) : null;
   const saved = id
     ? await prisma.purchaseOrder.update({ where: { id }, data })
-    : await prisma.purchaseOrder.create({ data: { ...data, tenantId: session.tenantId } });
+    : await prisma.purchaseOrder.create({ data: { ...data, tenantId: session.tenantId } as any });
+
+  // Optional first line item — a product must be chosen to create the PO with stock intent.
+  const firstProductId = str(fd, "productId");
+  const firstQty = str(fd, "quantity");
+  if (firstProductId && firstQty && parseInt(firstQty, 10) > 0) {
+    const product = await prisma.product.findUnique({ where: { id: firstProductId } } as any);
+    if (product && product.tenantId === session.tenantId) {
+      await prisma.purchaseOrderItem.create({
+        data: {
+          tenantId: session.tenantId,
+          purchaseOrderId: saved.id,
+          productId: firstProductId,
+          quantity: parseInt(firstQty, 10),
+          unitCost: str(fd, "unitCost") ? parseFloat(str(fd, "unitCost")) : (product.costPrice ? Number(product.costPrice) : 0),
+          notes: null,
+        } as any,
+      });
+    }
+  }
 
   await recordChange({
     tenantId: session.tenantId,

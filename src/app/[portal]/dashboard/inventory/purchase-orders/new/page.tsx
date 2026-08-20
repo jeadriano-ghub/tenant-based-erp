@@ -1,9 +1,8 @@
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { requireSession, getPermissionKeys, can, resolvePortal } from "@/lib/auth";
-import { PageHeader, Card, FormSection } from "@/components/ui";
-import { ActionForm, Field } from "@/components/form";
-import { savePurchaseOrderAction } from "../../../actions";
+import { PageHeader, Card } from "@/components/ui";
+import { PurchaseOrderForm } from "../PurchaseOrderForm";
 
 export const dynamic = "force-dynamic";
 
@@ -17,25 +16,22 @@ export default async function NewPurchaseOrderPage({ params }: { params: Promise
   if (!can(keys, "inventory.purchase_order.create")) redirect(`${portal.base}/dashboard/inventory/purchase-orders`);
 
   const base = portal.base;
-  const suppliers = await prisma.supplier.findMany({ where: { tenantId: session.tenantId! }, orderBy: { name: "asc" } } as any);
+  const [suppliers, products] = await Promise.all([
+    prisma.supplier.findMany({ where: { tenantId: session.tenantId! }, orderBy: { name: "asc" } } as any),
+    prisma.product.findMany({ where: { tenantId: session.tenantId! }, orderBy: { name: "asc" }, select: { id: true, name: true, sku: true, costPrice: true } } as any),
+  ]);
 
   return (
     <div>
       <PageHeader title="New purchase order" description="Create a new purchase order." breadcrumb={{ href: `${base}/dashboard/inventory/purchase-orders`, label: "Purchase orders" }} />
       <Card>
-        <ActionForm action={savePurchaseOrderAction} portal={slug} submitLabel="Save purchase order" cancelHref={`${base}/dashboard/inventory/purchase-orders`} redirectOnSuccess={`${base}/dashboard/inventory/purchase-orders`}>
-          <FormSection title="Purchase order" description="Basic procurement details.">
-            <select required name="supplierId" className="rounded-lg border bg-[var(--background)] px-3 py-2 text-sm">
-              <option value="">Select supplier</option>
-              {suppliers.map((s: any) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-            <Field label="Reference no." name="referenceNo" />
-            <Field label="Expected date" name="expectedDate" type="date" />
-            <Field label="Notes" name="notes" />
-          </FormSection>
-        </ActionForm>
+        <PurchaseOrderForm
+          suppliers={(suppliers as any[]).map((s) => ({ id: s.id, name: s.name, termsDays: s.termsDays ?? 30 }))}
+          products={(products as any[]).map((p) => ({ id: p.id, name: p.name, sku: p.sku, costPrice: p.costPrice ? Number(p.costPrice) : null }))}
+          portal={slug}
+          redirectOnSuccess={`${base}/dashboard/inventory/purchase-orders`}
+          cancelHref={`${base}/dashboard/inventory/purchase-orders`}
+        />
       </Card>
     </div>
   );

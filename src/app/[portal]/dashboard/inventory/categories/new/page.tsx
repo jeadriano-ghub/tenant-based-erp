@@ -4,6 +4,7 @@ import { requireSession, getPermissionKeys, can, resolvePortal } from "@/lib/aut
 import { PageHeader, Card, FormSection } from "@/components/ui";
 import { ActionForm, Field } from "@/components/form";
 import { saveCategoryAction } from "../../../actions";
+import { CategoryFields } from "../CategoryFields";
 
 export const dynamic = "force-dynamic";
 
@@ -25,12 +26,11 @@ export default async function NewCategoryPage({
 
   const base = portal.base;
   const parents = await prisma.category.findMany({ where: { tenantId: session.tenantId!, isActive: true }, orderBy: { name: "asc" } } as any);
-  // When launched as a subcategory, the chosen parent is locked in.
-  const lockedParent = parentId
-    ? parents.find((p: any) => (p as any).id === parentId)
-    : null;
-
+  const lockedParent = parentId ? parents.find((p: any) => (p as any).id === parentId) : null;
   const isSub = Boolean(lockedParent);
+
+  // Subcategories can't define their own spec fields; they inherit the parent's.
+  const parentOptions = isSub ? [] : (parents as any[]).map((p) => ({ id: p.id, name: p.name }));
 
   return (
     <div>
@@ -56,16 +56,7 @@ export default async function NewCategoryPage({
                 <p className="mt-1 text-xs text-[var(--muted)]">Subcategories inherit this main category as their parent.</p>
               </div>
             ) : (
-              <select
-                name="parentId"
-                defaultValue=""
-                className="rounded-lg border bg-[var(--background)] px-3 py-2 text-sm"
-              >
-                <option value="">— No parent (main category) —</option>
-                {parents.map((p: any) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
+              <CategoryFields parentOptions={parentOptions} />
             )}
             <Field label="Description" name="description" />
           </FormSection>

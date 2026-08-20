@@ -4,13 +4,11 @@ import { requireSession, getPermissionKeys, can, resolvePortal } from "@/lib/aut
 import { PageHeader, Card, FormSection } from "@/components/ui";
 import { ActionForm, Field } from "@/components/form";
 import { saveProductAction } from "../../../../actions";
-import { ProductFormFields } from "../../ProductFormFields";
+import { ProductFormFields, type PriceTier, type BarcodeRow } from "../../ProductFormFields";
 
 export const dynamic = "force-dynamic";
 
 const uid = () => Math.random().toString(36).slice(2, 9);
-
-type PriceTier = { id: string; name: string; price: string; minQty: string };
 
 async function encodePrices(p: any): Promise<PriceTier[]> {
   try {
@@ -37,8 +35,8 @@ export default async function EditProductPage({ params }: { params: Promise<{ po
 
   const product: any = await prisma.product.findUnique({
     where: { id },
-    include: { category: true, brand: true, barcodes: true, serials: true },
-  } as any);
+    include: { category: true, brand: true, barcodes: true, serials: true } as any,
+  });
   if (!product || product.tenantId !== session.tenantId) notFound();
 
   const categories = await prisma.category.findMany({ where: { tenantId: session.tenantId! }, orderBy: { name: "asc" } } as any);
@@ -46,8 +44,13 @@ export default async function EditProductPage({ params }: { params: Promise<{ po
 
   const base = portal.base;
   const prices = await encodePrices(product.prices);
-  const barcodes = (product.barcodes ?? []).map((b: any) => ({ id: uid(), barcode: b.barcode, format: b.format ?? "CODE128", isPrimary: Boolean(b.isPrimary) }));
-  const serials = (product.serials ?? []).map((s: any) => ({ id: uid(), serialNo: s.serialNo }));
+  const barcodes: BarcodeRow[] = (product.barcodes ?? []).map((b: any) => ({ id: uid(), barcode: b.barcode, format: b.format ?? "CODE128", isPrimary: Boolean(b.isPrimary) }));
+
+  const categoryOptions = (categories as any[]).map((c) => ({
+    id: c.id,
+    name: c.name,
+    fields: Array.isArray(c.fields) ? c.fields : [],
+  }));
 
   return (
     <div>
@@ -64,20 +67,11 @@ export default async function EditProductPage({ params }: { params: Promise<{ po
               sellingPrice={product.sellingPrice != null ? String(product.sellingPrice) : ""}
               initialPrices={prices}
               initialBarcodes={barcodes}
-              initialSerials={serials}
+              categoryOptions={categoryOptions}
+              brandOptions={brands as any}
+              defaultCategoryId={product.categoryId}
+              defaultBrandId={product.brandId || ""}
             />
-            <select required name="categoryId" defaultValue={product.categoryId} className="w-full rounded-lg border bg-[var(--surface)] px-3 py-2.5 text-sm outline-none transition-shadow focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/20">
-              <option value="">Select category</option>
-              {categories.map((c: any) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-            <select name="brandId" defaultValue={product.brandId || ""} className="w-full rounded-lg border bg-[var(--surface)] px-3 py-2.5 text-sm outline-none transition-shadow focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/20">
-              <option value="">No brand</option>
-              {brands.map((b: any) => (
-                <option key={b.id} value={b.id}>{b.name}</option>
-              ))}
-            </select>
             <Field label="Unit of measure" name="unitOfMeasure" defaultValue={product.unitOfMeasure || "pc"} />
             <div className="sm:col-span-2">
               <Field label="Description" name="description" defaultValue={product.description || ""} />

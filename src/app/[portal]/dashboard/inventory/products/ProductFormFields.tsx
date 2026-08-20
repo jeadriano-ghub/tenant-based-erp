@@ -5,7 +5,12 @@ import { Field, controlClass } from "@/components/form";
 
 export type PriceTier = { id: string; name: string; price: string; minQty: string };
 export type BarcodeRow = { id: string; barcode: string; format: string; isPrimary: boolean };
-export type SerialRow = { id: string; serialNo: string };
+
+export type CategoryOption = {
+  id: string;
+  name: string;
+  fields?: { key: string; label: string; type: "text" | "number" | "select"; required?: boolean; options?: string[] }[] | null;
+};
 
 const TYPE_LABELS: Record<string, string> = {
   SERIALIZED: "Serialized",
@@ -23,25 +28,43 @@ export function ProductFormFields({
   sellingPrice,
   initialPrices,
   initialBarcodes,
-  initialSerials,
+  categoryOptions = [],
+  brandOptions = [],
+  defaultCategoryId,
+  defaultBrandId,
 }: {
   productType: string;
   costPrice?: string | null;
   sellingPrice?: string | null;
   initialPrices?: PriceTier[];
   initialBarcodes?: BarcodeRow[];
-  initialSerials?: SerialRow[];
+  categoryOptions?: CategoryOption[];
+  brandOptions?: { id: string; name: string }[];
+  defaultCategoryId?: string | null;
+  defaultBrandId?: string | null;
 }) {
   const [type, setType] = useState<string>(productType || "NON_SERIALIZED");
+  const [categoryId, setCategoryId] = useState<string>(defaultCategoryId ?? "");
   const [prices, setPrices] = useState<PriceTier[]>(
     initialPrices && initialPrices.length ? initialPrices : [{ id: uid(), name: "Default", price: "", minQty: "" }],
   );
   const [barcodes, setBarcodes] = useState<BarcodeRow[]>(
     initialBarcodes && initialBarcodes.length ? initialBarcodes : [{ id: uid(), barcode: "", format: "CODE128", isPrimary: true }],
   );
-  const [serials, setSerials] = useState<SerialRow[]>(
-    initialSerials && initialSerials.length ? initialSerials : [{ id: uid(), serialNo: "" }],
-  );
+
+  const selectedCategory = categoryOptions.find((c) => c.id === categoryId);
+  const specFields = selectedCategory?.fields ?? [];
+
+  // spec field values keyed by field key
+  const [specValues, setSpecValues] = useState<Record<string, string>>({});
+  const updateSpec = (key: string, val: string) =>
+    setSpecValues((prev) => ({ ...prev, [key]: val }));
+  const specJson = useMemo(() => {
+    const entries = specFields
+      .map((f) => ({ key: f.key, value: specValues[f.key] ?? "" }))
+      .filter((e) => e.value !== "");
+    return JSON.stringify(entries);
+  }, [specFields, specValues]);
 
   const updatePrice = (id: string, key: keyof PriceTier, val: string) =>
     setPrices((arr) => arr.map((p) => (p.id === id ? { ...p, [key]: val } : p)));
@@ -55,8 +78,6 @@ export function ProductFormFields({
     );
   const setPrimaryBarcode = (id: string) =>
     setBarcodes((arr) => arr.map((b) => ({ ...b, isPrimary: b.id === id })));
-  const updateSerial = (id: string, val: string) =>
-    setSerials((arr) => arr.map((s) => (s.id === id ? { ...s, serialNo: val } : s)));
 
   // hidden state sync so the server action reads current values
   const priceJson = useMemo(() => JSON.stringify(prices.filter((p) => p.name && p.price)), [prices]);
@@ -64,17 +85,77 @@ export function ProductFormFields({
     () => JSON.stringify(barcodes.filter((b) => b.barcode)),
     [barcodes],
   );
-  const serialJson = useMemo(
-    () => JSON.stringify(serials.filter((s) => s.serialNo)),
-    [serials],
-  );
 
   return (
     <>
       <input type="hidden" name="productType" value={type} />
       <input type="hidden" name="pricesJson" value={priceJson} />
       <input type="hidden" name="barcodesJson" value={barcodeJson} />
-      <input type="hidden" name="serialsJson" value={serialJson} />
+      <input type="hidden" name="specJson" value={specJson} />
+      <input type="hidden" name="categoryId" value={categoryId} />
+
+      {/* Category + Brand — uniform dropdowns */}
+      <div>
+        <label className="mb-1.5 block text-sm font-medium">Category <span className="text-red-500">*</span></label>
+        <select
+          name="categoryId"
+          value={categoryId}
+          onChange={(e) => setCategoryId(e.target.value)}
+          required
+          className={controlClass}
+        >
+          <option value="">Select category</option>
+          {categoryOptions.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="mb-1.5 block text-sm font-medium">Brand</label>
+        <select name="brandId" defaultValue={defaultBrandId ?? ""} className={controlClass}>
+          <option value="">No brand</option>
+          {brandOptions.map((b) => (
+            <option key={b.id} value={b.id}>{b.name}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Category-specific specification fields */}
+      {specFields.length > 0 && (
+        <div className="sm:col-span-2 rounded-lg border border-dashed border-[var(--brand)]/40 p-4">
+          <p className="mb-2 text-sm font-medium">{selectedCategory?.name} specifications</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {specFields.map((f) => (
+              <div key={f.key}>
+                <label className="mb-1.5 block text-sm font-medium">
+                  {f.label} {f.required && <span className="text-red-500">*</span>}
+                </label>
+                {f.type === "select" ? (
+                  <select
+                    value={specValues[f.key] ?? ""}
+                    onChange={(e) => updateSpec(f.key, e.target.value)}
+                    required={f.required}
+                    className={controlClass}
+                  >
+                    <option value="">Select…</option>
+                    {(f.options ?? []).map((o) => (
+                      <option key={o} value={o}>{o}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type={f.type === "number" ? "number" : "text"}
+                    value={specValues[f.key] ?? ""}
+                    onChange={(e) => updateSpec(f.key, e.target.value)}
+                    required={f.required}
+                    className={controlClass}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Type selector (segmented) */}
       <div className="sm:col-span-2">
@@ -139,26 +220,6 @@ export function ProductFormFields({
       </div>
 
       {/* TYPE-SPECIFIC SECTIONS */}
-      {type === "SERIALIZED" && (
-        <div className="sm:col-span-2 rounded-lg border border-dashed border-[var(--brand)]/40 p-4">
-          <div className="mb-2 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">Serial numbers</p>
-              <p className="text-xs text-[var(--muted)]">Track each unit individually. One serial per line/item.</p>
-            </div>
-            <button type="button" onClick={() => setSerials((a) => [...a, { id: uid(), serialNo: "" }])} className="rounded-md border px-2 py-1 text-xs font-medium hover:bg-[var(--background)]">+ Add serial</button>
-          </div>
-          <div className="space-y-2">
-            {serials.map((s) => (
-              <div key={s.id} className="flex items-center gap-2">
-                <input value={s.serialNo} onChange={(e) => updateSerial(s.id, e.target.value)} placeholder="Serial number" className={controlClass} />
-                <button type="button" onClick={() => setSerials((a) => a.filter((x) => x.id !== s.id))} disabled={serials.length === 1} className="rounded-md border px-2 py-2 text-xs text-red-500 disabled:opacity-40">✕</button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {type === "BARCODE" && (
         <div className="sm:col-span-2 rounded-lg border border-dashed border-[var(--brand)]/40 p-4">
           <div className="mb-2 flex items-center justify-between">

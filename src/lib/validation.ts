@@ -101,6 +101,7 @@ export const supplierSchema = z.object({
   tin: z.string().optional().or(z.literal("")),
   businessRegNo: z.string().optional().or(z.literal("")),
   notes: z.string().optional().or(z.literal("")),
+  termsDays: z.string().optional().or(z.literal("")),
 });
 
 export const productSchema = z.object({
@@ -118,6 +119,7 @@ export const productSchema = z.object({
   pricesJson: z.string().optional().or(z.literal("")),
   barcodesJson: z.string().optional().or(z.literal("")),
   serialsJson: z.string().optional().or(z.literal("")),
+  specJson: z.string().optional().or(z.literal("")),
 });
 
 export const purchaseOrderSchema = z.object({
