@@ -68,10 +68,12 @@ function NavLinks({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => 
   );
 }
 
-function NavGroupSection({ group, onNavigate }: { group: NavGroup; onNavigate?: () => void }) {
+function NavGroupSection({ group, onNavigate, depth = 0 }: { group: NavGroup; onNavigate?: () => void; depth?: number }) {
   const [open, setOpen] = useState(true);
   const pathname = usePathname();
-  const active = group.items.some((n) => pathname.startsWith(n.href));
+  const active = group.items.some((n) => ("items" in n ? pathname.startsWith((n as NavGroup).items[0]?.href ?? "") : pathname.startsWith(n.href)));
+
+  const childIsGroup = (n: NavItem | NavGroup): n is NavGroup => "items" in n;
 
   return (
     <div className="space-y-1">
@@ -88,7 +90,17 @@ function NavGroupSection({ group, onNavigate }: { group: NavGroup; onNavigate?: 
         </span>
         <Chevron open={open} />
       </button>
-      {open && <div className="ml-5 border-l pl-2"><NavLinks items={group.items} onNavigate={onNavigate} /></div>}
+      {open && (
+        <div className={depth === 0 ? "ml-5 border-l pl-2" : "ml-3 border-l pl-2"}>
+          {group.items.map((n) =>
+            childIsGroup(n) ? (
+              <NavGroupSection key={n.label} group={n} onNavigate={onNavigate} depth={depth + 1} />
+            ) : (
+              <NavLinks key={n.href} items={[n as NavItem]} onNavigate={onNavigate} />
+            ),
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -39,38 +39,40 @@ export default async function DashboardLayout({
     .filter((n) => n.show)
     .map(({ href, label }) => ({ href, label } as { href: string; label: string }));
 
-  const inventoryNav:
-    | { label: string; items: { href: string; label: string; show?: boolean }[] }[]
-    | null = !portal.isAdminPortal && hasSomeInventory(keys)
-    ? [
-        {
-          label: "Master Data",
+  const inventoryGroup: { label: string; items: { label: string; items: { href: string; label: string; show?: boolean }[] }[] } | null =
+    !portal.isAdminPortal && hasSomeInventory(keys)
+      ? {
+          label: "Inventory",
           items: [
-            { href: `${base}/dashboard/inventory/categories/manage`, label: "Categories", show: has("inventory.product.view") },
-            { href: `${base}/dashboard/inventory/suppliers`, label: "Suppliers", show: has("inventory.supplier.view") },
-            { href: `${base}/dashboard/inventory/brands`, label: "Brands", show: has("inventory.brand.view") },
+            {
+              label: "Master Data",
+              items: [
+                { href: `${base}/dashboard/inventory/categories/manage`, label: "Categories", show: has("inventory.product.view") },
+                { href: `${base}/dashboard/inventory/suppliers`, label: "Suppliers", show: has("inventory.supplier.view") },
+                { href: `${base}/dashboard/inventory/brands`, label: "Brands", show: has("inventory.brand.view") },
+              ],
+            },
+            {
+              label: "Operations",
+              items: [
+                { href: `${base}/dashboard/inventory/products`, label: "Products", show: has("inventory.product.view") },
+                { href: `${base}/dashboard/inventory/purchase-orders`, label: "Purchase Orders", show: has("inventory.purchase_order.view") },
+                { href: `${base}/dashboard/inventory/quotations`, label: "Quotations", show: has("inventory.quotation.view") },
+                { href: `${base}/dashboard/inventory/sales-orders`, label: "Sales Orders", show: has("inventory.sales_order.view") },
+                { href: `${base}/dashboard/inventory/pos`, label: "POS", show: has("inventory.pos.view") },
+                { href: `${base}/dashboard/inventory/stock-movements`, label: "Stock Movements", show: has("inventory.stock_movement.view") },
+              ],
+            },
           ],
-        },
-        {
-          label: "Operations",
-          items: [
-            { href: `${base}/dashboard/inventory/products`, label: "Products", show: has("inventory.product.view") },
-            { href: `${base}/dashboard/inventory/purchase-orders`, label: "Purchase Orders", show: has("inventory.purchase_order.view") },
-            { href: `${base}/dashboard/inventory/quotations`, label: "Quotations", show: has("inventory.quotation.view") },
-            { href: `${base}/dashboard/inventory/sales-orders`, label: "Sales Orders", show: has("inventory.sales_order.view") },
-            { href: `${base}/dashboard/inventory/pos`, label: "POS", show: has("inventory.pos.view") },
-            { href: `${base}/dashboard/inventory/stock-movements`, label: "Stock Movements", show: has("inventory.stock_movement.view") },
-          ],
-        },
-      ]
+        }
+      : null;
+
+  const filteredInventory = inventoryGroup
+    ? { ...inventoryGroup, items: inventoryGroup.items.map((g) => ({ ...g, items: g.items.filter((i) => i.show !== false) })) }
     : null;
 
-  const finalNav = inventoryNav
-    ? [
-        ...nav,
-        ...inventoryNav.map((g) => ({ ...g, items: g.items.filter((i) => i.show !== false) })),
-        { href: `${base}/dashboard/audit`, label: "Audit Log" },
-      ]
+  const finalNav = filteredInventory
+    ? [...nav, filteredInventory, { href: `${base}/dashboard/audit`, label: "Audit Log" }]
     : [...nav, { href: `${base}/dashboard/audit`, label: "Audit Log" }];
 
   const signOut = (
