@@ -16,11 +16,15 @@ function Icon({ name }: { name: string }) {
     Permissions: "M7 11V7a5 5 0 0 1 10 0v4M5 11h14v10H5V11Z",
     "Branch / Warehouse": "M3 21h18M4 21V8l8-5 8 5v13M9 21v-6h6v6",
     "Audit Log": "M9 11H5M9 5h4M9 17H5M5 5v14M13 11h6M13 5h6M13 17h6M19 5v14",
+    "Master Data": "M4 6h16M4 12h16M4 18h16M4 6V4h16v2M4 12v-2h16v2M4 18v-2h16v2",
+    "Operations": "M12 8v4l3 2M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z",
     Inventory: "M20 7h-9M20 11h-9M20 15h-9M5 7h2m-2 4h2m-2 4h2",
     "Catalog": "M20 7h-9M20 11h-9M20 15h-9M5 7h2m-2 4h2m-2 4h2",
     Purchasing: "M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5",
     Sales: "M12 2 2 7l10 5 10-5-10-5ZM2 17l10 5 10-5M2 12l10 5 10-5",
     POS: "M3 3h18v18H3zM9 9h.01M15 9h.01M9 15h.01M15 15h.01M8 14a4 4 0 0 1 8 0",
+    Suppliers: "M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M7 11h.01M11 11h.01M15 11h.01",
+    Brands: "M5 3h4l2 5-2 5h-4l2-5-2-5ZM14 11l4-8 4 8-4 3-4-3Z",
   };
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden>
