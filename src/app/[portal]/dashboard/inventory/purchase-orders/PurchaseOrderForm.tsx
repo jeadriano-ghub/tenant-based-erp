@@ -178,27 +178,19 @@ export function PurchaseOrderForm({
             {earnedScope === "category" && (
               <div className="sm:col-span-2">
                 <label className="mb-1.5 block text-sm font-medium">Allowed categories</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {categories.map((c) => (
-                    <label key={c.id} className="flex items-center gap-2 text-xs">
-                      <input type="checkbox" name="earnedCreditCategoryIds" value={c.id} className="accent-[var(--brand)]" />
-                      {c.name}
-                    </label>
-                  ))}
-                </div>
+                <select multiple name="earnedCreditCategoryIds" defaultValue={defaults?.earnedCreditCategoryIds ?? []} className={`${controlClass} h-32`}>
+                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <p className="mt-1 text-xs text-[var(--muted)]">Hold Ctrl/Cmd to select multiple.</p>
               </div>
             )}
             {earnedScope === "product" && (
               <div className="sm:col-span-2">
                 <label className="mb-1.5 block text-sm font-medium">Allowed products</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {products.map((p) => (
-                    <label key={p.id} className="flex items-center gap-2 text-xs">
-                      <input type="checkbox" name="earnedCreditProductIds" value={p.id} className="accent-[var(--brand)]" />
-                      {p.name}
-                    </label>
-                  ))}
-                </div>
+                <select multiple name="earnedCreditProductIds" defaultValue={defaults?.earnedCreditProductIds ?? []} className={`${controlClass} h-32`}>
+                  {products.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>)}
+                </select>
+                <p className="mt-1 text-xs text-[var(--muted)]">Hold Ctrl/Cmd to select multiple.</p>
               </div>
             )}
           </div>
