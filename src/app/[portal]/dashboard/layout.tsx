@@ -44,13 +44,14 @@ export default async function DashboardLayout({
         label: "Inventory",
         items: [
           { href: `${base}/dashboard/inventory/products`, label: "Products" },
+          { href: `${base}/dashboard/inventory/categories/manage`, label: "Manage Categories", show: has("inventory.category.view") },
           { href: `${base}/dashboard/inventory/suppliers`, label: "Suppliers" },
           { href: `${base}/dashboard/inventory/purchase-orders`, label: "Purchase Orders" },
           { href: `${base}/dashboard/inventory/quotations`, label: "Quotations" },
           { href: `${base}/dashboard/inventory/sales-orders`, label: "Sales Orders" },
           { href: `${base}/dashboard/inventory/pos`, label: "POS" },
           { href: `${base}/dashboard/inventory/stock-movements`, label: "Stock Movements" },
-        ],
+        ].filter((n) => (n as any).show !== false),
       }
     : null;
 
