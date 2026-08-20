@@ -56,6 +56,7 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
             { label: "Status", value: <Badge tone={STATUS_TONE[po.status] ?? "neutral"}>{po.status}</Badge> },
             { label: "Expected", value: po.expectedDate ? new Date(po.expectedDate).toLocaleDateString() : "—" },
             { label: "Received", value: po.receivedDate ? new Date(po.receivedDate).toLocaleDateString() : "—" },
+            { label: "Remarks", value: po.remarks || "—" },
           ]}
         />
       </Card>
@@ -75,6 +76,18 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
             ))}
           </div>
         )}
+      </Card>
+
+      <Card title="Summary">
+        <DescriptionList
+          items={[
+            { label: "Subtotal", value: `₱${Number(po.subtotal ?? 0).toFixed(2)}` },
+            { label: po.taxExempt ? "Tax (exempt)" : `Tax (${po.taxRate ?? 0}%)`, value: `₱${Number(po.taxAmount ?? 0).toFixed(2)}` },
+            { label: "Supplier credit applied", value: `− ₱${Number(po.supplierCreditApplied ?? 0).toFixed(2)}` },
+            { label: "Grand total", value: `₱${Math.max(0, Number(po.subtotal ?? 0) + Number(po.taxAmount ?? 0) - Number(po.supplierCreditApplied ?? 0)).toFixed(2)}` },
+            { label: "Earned credit", value: po.earnedCredit ? `₱${Number(po.earnedCredit).toFixed(2)} (${po.earnedCreditScope ?? "any"})` : "—" },
+          ]}
+        />
       </Card>
 
       <Card title="Stock ins">

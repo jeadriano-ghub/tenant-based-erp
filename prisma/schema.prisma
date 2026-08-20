@@ -78,6 +78,7 @@ model Tenant {
   billingCycle      BillingCycle  @default(MONTHLY)
   paymentMethod     PaymentMethod @default(BANK_TRANSFER)
   status            TenantStatus  @default(PENDING)
+  globalTaxRate     Float         @default(0)  // default tax rate (%) applied to new purchase orders
 
   users         User[]
   roles         Role[]
@@ -537,6 +538,23 @@ model PurchaseOrder {
   receivedDate    DateTime?
   termsDays       Int?     // payment term in days (inherited from supplier)
   notes           String?
+  remarks         String?
+
+  // Taxation
+  taxExempt       Boolean  @default(false)
+  taxRate         Float?   // percentage; defaults to tenant.globalTaxRate
+  taxAmount       Float?   @default(0)
+
+  // Amounts
+  subtotal        Float?   @default(0)
+  supplierCreditApplied Float? @default(0)
+
+  // Earned credit (supplier reward after this PO is purchased)
+  earnedCredit            Float?   @default(0)
+  earnedCreditScope       String?  // "any" | "category" | "product"
+  earnedCreditCategoryIds Json?
+  earnedCreditProductIds  Json?
+
   createdById     String?
   createdBy       User?              @relation(fields: [createdById], references: [id], onDelete: SetNull)
 

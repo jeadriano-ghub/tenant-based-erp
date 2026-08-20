@@ -906,36 +906,70 @@ export async function savePurchaseOrderAction(_p: ActionState, fd: FormData): Pr
   const supplier = await prisma.supplier.findUnique({ where: { id: d.supplierId } } as any);
   if (!supplier || supplier.tenantId !== session.tenantId) return { error: "Invalid supplier." };
 
+  // Collect line items (productId_0, quantity_0, unitCost_0, ...)
+  const items: { productId: string; quantity: number; unitCost: number }[] = [];
+  for (let i = 0; fd.get(`productId_${i}`) !== null; i++) {
+    const pid = str(fd, `productId_${i}`);
+    const qty = parseInt(str(fd, `quantity_${i}`), 10);
+    const cost = parseFloat(str(fd, `unitCost_${i}`));
+    if (!pid || !qty || qty <= 0) continue;
+    const product = await prisma.product.findUnique({ where: { id: pid } } as any);
+    if (!product || product.tenantId !== session.tenantId) continue;
+    items.push({ productId: pid, quantity: qty, unitCost: isNaN(cost) ? Number(product.costPrice ?? 0) : cost });
+  }
+  if (items.length === 0) return { error: "Add at least one product to the purchase order." };
+
+  const subtotal = items.reduce((sum, it) => sum + it.quantity * it.unitCost, 0);
+  const taxExempt = fd.get("taxExempt") === "on" || fd.get("taxExempt") === "true";
+  const taxRate = str(fd, "taxRate") ? parseFloat(str(fd, "taxRate")) : (await prisma.tenant.findUnique({ where: { id: session.tenantId }, select: { globalTaxRate: true } } as any))?.globalTaxRate ?? 0;
+  const taxAmount = taxExempt ? 0 : subtotal * (isNaN(taxRate) ? 0 : taxRate) / 100;
+  const supplierCreditApplied = str(fd, "supplierCreditApplied") ? parseFloat(str(fd, "supplierCreditApplied")) : 0;
+
   const data = {
     referenceNo: d.referenceNo || null,
     supplierId: d.supplierId,
     expectedDate: toDate(fd.get("expectedDate")),
     notes: d.notes || null,
     termsDays: str(fd, "termsDays") ? parseInt(str(fd, "termsDays"), 10) : (supplier.termsDays ?? 30),
+    remarks: str(fd, "remarks") || null,
+    taxExempt,
+    taxRate: isNaN(taxRate) ? null : taxRate,
+    taxAmount,
+    subtotal,
+    supplierCreditApplied: isNaN(supplierCreditApplied) ? 0 : supplierCreditApplied,
+    earnedCredit: str(fd, "earnedCredit") ? parseFloat(str(fd, "earnedCredit")) : 0,
+    earnedCreditScope: str(fd, "earnedCredit") ? str(fd, "earnedCreditScope") || "any" : null,
   };
 
   const beforePo = id ? await prisma.purchaseOrder.findUnique({ where: { id } }) : null;
   const saved = id
-    ? await prisma.purchaseOrder.update({ where: { id }, data })
+    ? await prisma.purchaseOrder.update({ where: { id }, data } as any)
     : await prisma.purchaseOrder.create({ data: { ...data, tenantId: session.tenantId } as any });
 
-  // Optional first line item — a product must be chosen to create the PO with stock intent.
-  const firstProductId = str(fd, "productId");
-  const firstQty = str(fd, "quantity");
-  if (firstProductId && firstQty && parseInt(firstQty, 10) > 0) {
-    const product = await prisma.product.findUnique({ where: { id: firstProductId } } as any);
-    if (product && product.tenantId === session.tenantId) {
-      await prisma.purchaseOrderItem.create({
-        data: {
-          tenantId: session.tenantId,
-          purchaseOrderId: saved.id,
-          productId: firstProductId,
-          quantity: parseInt(firstQty, 10),
-          unitCost: str(fd, "unitCost") ? parseFloat(str(fd, "unitCost")) : (product.costPrice ? Number(product.costPrice) : 0),
-          notes: null,
-        } as any,
-      });
-    }
+  // Replace line items with the submitted set.
+  await prisma.purchaseOrderItem.deleteMany({ where: { purchaseOrderId: saved.id } } as any);
+  await prisma.purchaseOrderItem.createMany({
+    data: items.map((it) => ({
+      tenantId: session.tenantId,
+      purchaseOrderId: saved.id,
+      productId: it.productId,
+      quantity: it.quantity,
+      unitCost: it.unitCost,
+      notes: null,
+    })),
+  } as any);
+
+  // Persist earned-credit usage constraints (only when an earned credit is set)
+  const earnedIds = (fd.getAll("earnedCreditCategoryIds") as string[]).filter(Boolean);
+  const earnedPids = (fd.getAll("earnedCreditProductIds") as string[]).filter(Boolean);
+  if (data.earnedCreditScope === "category" || data.earnedCreditScope === "product") {
+    await prisma.purchaseOrder.update({
+      where: { id: saved.id },
+      data: {
+        earnedCreditCategoryIds: data.earnedCreditScope === "category" ? earnedIds : [],
+        earnedCreditProductIds: data.earnedCreditScope === "product" ? earnedPids : [],
+      } as any,
+    });
   }
 
   await recordChange({
