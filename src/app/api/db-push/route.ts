@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { execSync } from "node:child_process";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const PRISMA_BIN = require.resolve("prisma/build/index.js");
 
 // TEMPORARY migration endpoint. Protected by a one-time token.
 // Runs `prisma db push` using the runtime DATABASE_URL (which Vercel injects
@@ -19,7 +23,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   try {
-    const out = execSync("./node_modules/.bin/prisma db push --accept-data-loss", {
+    const out = execSync(`node "${PRISMA_BIN}" db push --accept-data-loss`, {
       cwd: process.cwd(),
       env: process.env,
       timeout: 55000,
