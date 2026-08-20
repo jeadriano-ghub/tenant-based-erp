@@ -83,6 +83,7 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
           items={[
             { label: "Subtotal", value: `₱${Number(po.subtotal ?? 0).toFixed(2)}` },
             { label: po.taxExempt ? "Tax (exempt)" : `Tax (${po.taxRate ?? 0}%)`, value: `₱${Number(po.taxAmount ?? 0).toFixed(2)}` },
+            { label: "Invoice amount (cost + tax)", value: `₱${Number(Number(po.subtotal ?? 0) + Number(po.taxAmount ?? 0)).toFixed(2)}` },
             { label: "Supplier credit applied", value: `− ₱${Number(po.supplierCreditApplied ?? 0).toFixed(2)}` },
             { label: "Grand total", value: `₱${Math.max(0, Number(po.subtotal ?? 0) + Number(po.taxAmount ?? 0) - Number(po.supplierCreditApplied ?? 0)).toFixed(2)}` },
             { label: "Earned credit", value: po.earnedCredit ? `₱${Number(po.earnedCredit).toFixed(2)} (${po.earnedCreditScope ?? "any"})` : "—" },

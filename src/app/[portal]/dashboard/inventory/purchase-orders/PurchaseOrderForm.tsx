@@ -203,6 +203,7 @@ export function PurchaseOrderForm({
           <div className="space-y-1 text-sm">
             <Line label="Subtotal" value={`₱${subtotal.toFixed(2)}`} />
             <Line label={`Tax${taxExempt ? " (exempt)" : ` (${taxRate}%)`}`} value={`₱${taxAmount.toFixed(2)}`} />
+            <Line label="Invoice amount (cost + tax)" value={`₱${(subtotal + taxAmount).toFixed(2)}`} bold />
             <Line label="Supplier credit" value={`− ₱${credit.toFixed(2)}`} />
             <Line label="Grand total" value={`₱${grandTotal.toFixed(2)}`} bold />
           </div>
