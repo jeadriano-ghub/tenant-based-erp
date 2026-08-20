@@ -34,6 +34,15 @@ export function CategoryFields({
   const update = (id: string, key: keyof CategorySpecField, val: string | boolean) =>
     setFields((arr) => arr.map((f) => (f.id === id ? { ...f, [key]: val } : f)));
 
+  const move = (index: number, dir: -1 | 1) =>
+    setFields((arr) => {
+      const target = index + dir;
+      if (target < 0 || target >= arr.length) return arr;
+      const next = [...arr];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+
   const fieldsJson = useMemo(() => {
     const cleaned = fields
       .filter((f) => f.label && f.key)
@@ -96,9 +105,9 @@ export function CategoryFields({
               <span>Type</span>
               <span>Required</span>
               <span>Options (comma sep.)</span>
-              <span />
+              <span>Sort</span>
             </div>
-            {fields.map((f) => (
+            {fields.map((f, index) => (
               <div key={f.id} className="grid grid-cols-[1fr_1.2fr_0.9fr_0.7fr_1.4fr_auto] items-center gap-2">
                 <input
                   value={f.key}
@@ -137,13 +146,33 @@ export function CategoryFields({
                   disabled={f.type !== "select"}
                   className={`${controlClass} disabled:opacity-50`}
                 />
-                <button
-                  type="button"
-                  onClick={() => setFields((a) => a.filter((x) => x.id !== f.id))}
-                  className="rounded-md border px-2 py-2 text-xs text-red-500"
-                >
-                  ✕
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => move(index, -1)}
+                    disabled={index === 0}
+                    aria-label="Move up"
+                    className="rounded-md border px-1.5 py-1 text-xs disabled:opacity-30 hover:bg-[var(--background)]"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => move(index, 1)}
+                    disabled={index === fields.length - 1}
+                    aria-label="Move down"
+                    className="rounded-md border px-1.5 py-1 text-xs disabled:opacity-30 hover:bg-[var(--background)]"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFields((a) => a.filter((x) => x.id !== f.id))}
+                    className="rounded-md border px-2 py-2 text-xs text-red-500"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
             ))}
           </div>
