@@ -17,10 +17,14 @@ export default async function CategoryDetailPage({ params }: { params: Promise<{
   if (!can(keys, "inventory.category.view")) redirect(`${portal.base}/dashboard/inventory`);
 
   const base = portal.base;
-  const category = await prisma.category.findUnique({ where: { id } });
+  const category = await prisma.category.findUnique({
+    where: { id },
+    include: { children: { orderBy: { name: "asc" } } },
+  } as any);
   const parent = category?.parentId ? await prisma.category.findUnique({ where: { id: category.parentId } }) : null;
   const safeCategory = category ? { ...category, parent } : null;
   if (!safeCategory || safeCategory.tenantId !== session.tenantId) notFound();
+  const subcategories = (safeCategory as any).children ?? [];
 
   const canEdit = can(keys, "inventory.category.update");
   const canDelete = can(keys, "inventory.category.delete");
@@ -51,6 +55,35 @@ export default async function CategoryDetailPage({ params }: { params: Promise<{
             { label: "Created", value: safeCategory.createdAt.toISOString().slice(0, 10) },
           ]}
         />
+      </Card>
+
+      <Card
+        title="Subcategories"
+        description={subcategories.length ? "Nested categories under this one." : "No subcategories yet."}
+        footer={
+          canEdit ? (
+            <LinkButton href={`${base}/dashboard/inventory/categories/new?parentId=${safeCategory.id}`} variant="secondary" size="sm">
+              + Add subcategory
+            </LinkButton>
+          ) : undefined
+        }
+      >
+        {subcategories.length > 0 && (
+          <ul className="grid gap-2">
+            {subcategories.map((s: any) => (
+              <li key={s.id}>
+                <LinkButton
+                  variant="ghost"
+                  href={`${base}/dashboard/inventory/categories/${s.id}`}
+                  className="!px-0 !text-sm !font-medium"
+                >
+                  {s.name}
+                </LinkButton>
+                {s.description && <p className="mt-0.5 text-xs text-[var(--muted)]">{s.description}</p>}
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
     </div>
   );

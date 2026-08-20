@@ -31,7 +31,12 @@ export default async function CategoriesPage({ params }: { params: Promise<{ por
       <PageHeader
         title="Categories"
         description="Product categories and subcategories."
-        action={canCreate ? <LinkButton href={`${base}/dashboard/inventory/categories/new`}>New category</LinkButton> : undefined}
+        action={
+          <div className="flex gap-2">
+            <LinkButton href={`${base}/dashboard/inventory/categories/manage`} variant="secondary">Manage</LinkButton>
+            {canCreate && <LinkButton href={`${base}/dashboard/inventory/categories/new`}>New category</LinkButton>}
+          </div>
+        }
       />
       <Card>
         {categories.length === 0 ? (
