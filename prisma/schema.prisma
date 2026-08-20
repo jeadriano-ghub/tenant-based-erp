@@ -392,6 +392,7 @@ model Product {
   minStockLevel   Int?         @default(0)
   reorderPoint    Int?         @default(0)
   isActive        Boolean      @default(true)
+  prices          Json?        // array of price tiers: { name, price, minQty? }
 
   purchaseOrderItems PurchaseOrderItem[]
   stockInItems       StockInItem[]
