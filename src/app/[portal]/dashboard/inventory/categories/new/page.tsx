@@ -37,7 +37,7 @@ export default async function NewCategoryPage({
       <PageHeader
         title={isSub ? `New subcategory of ${lockedParent!.name}` : "New category"}
         description={isSub ? "This will be nested under the selected main category." : "Create a product category or subcategory."}
-        breadcrumb={{ href: `${base}/dashboard/inventory/categories/manage`, label: "Manage categories" }}
+        breadcrumb={{ href: `${base}/dashboard/inventory/categories/manage`, label: "Categories" }}
       />
       <Card>
         <ActionForm

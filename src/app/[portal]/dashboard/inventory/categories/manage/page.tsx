@@ -60,7 +60,7 @@ export default async function ManageCategoriesPage({ params }: { params: Promise
   return (
     <div>
       <PageHeader
-        title="Manage categories"
+        title="Categories"
         description="Organize products into main categories and nested subcategories."
         breadcrumb={{ href: `${base}/dashboard/inventory/categories`, label: "Categories" }}
         action={
