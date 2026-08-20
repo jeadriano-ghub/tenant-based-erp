@@ -9,7 +9,7 @@ export type BarcodeRow = { id: string; barcode: string; format: string; isPrimar
 export type CategoryOption = {
   id: string;
   name: string;
-  fields?: { key: string; label: string; type: "text" | "number" | "select"; required?: boolean; options?: string[] }[] | null;
+  fields?: { key: string; label: string; type: "text" | "number" | "select"; required?: boolean; options?: string[]; status?: "active" | "disabled" | "hidden" }[] | null;
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -129,13 +129,15 @@ export function ProductFormFields({
               <div key={f.key}>
                 <label className="mb-1.5 block text-sm font-medium">
                   {f.label} {f.required && <span className="text-red-500">*</span>}
+                  {f.status === "disabled" && <span className="ml-1 text-[11px] font-normal text-[var(--muted)]">(disabled)</span>}
                 </label>
                 {f.type === "select" ? (
                   <select
                     value={specValues[f.key] ?? ""}
                     onChange={(e) => updateSpec(f.key, e.target.value)}
-                    required={f.required}
-                    className={controlClass}
+                    required={f.required && f.status === "active"}
+                    disabled={f.status === "disabled"}
+                    className={`${controlClass} disabled:opacity-60`}
                   >
                     <option value="">Select…</option>
                     {(f.options ?? []).map((o) => (
@@ -147,8 +149,9 @@ export function ProductFormFields({
                     type={f.type === "number" ? "number" : "text"}
                     value={specValues[f.key] ?? ""}
                     onChange={(e) => updateSpec(f.key, e.target.value)}
-                    required={f.required}
-                    className={controlClass}
+                    required={f.required && f.status === "active"}
+                    disabled={f.status === "disabled"}
+                    className={`${controlClass} disabled:opacity-60`}
                   />
                 )}
               </div>
