@@ -117,21 +117,33 @@ export default async function CategoryDetailPage({ params }: { params: Promise<{
           {specFields.length === 0 ? (
             <p className="text-sm text-[var(--muted)]">No custom fields defined.</p>
           ) : (
-            <ul className="divide-y">
-              {specFields.map((f: any, i: number) => (
-                <li key={f.key || i} className="flex items-center justify-between gap-3 py-2 text-sm">
-                  <div>
-                    <span className="font-medium">{f.label || f.key}</span>
-                    <span className="ml-2 text-xs text-[var(--muted)]">{f.key}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
-                    <Badge tone="neutral">{f.type}</Badge>
-                    {f.required && <Badge tone="warning">Required</Badge>}
-                    <Badge tone={f.status === "active" ? "success" : f.status === "disabled" ? "neutral" : "danger"}>{f.status || "active"}</Badge>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <>
+              <ul className="divide-y">
+                {specFields.map((f: any, i: number) => (
+                  <li key={f.key || i} className="flex flex-wrap items-center justify-between gap-3 py-2 text-sm">
+                    <div>
+                      <span className="font-medium">{f.label || f.key}</span>
+                      <span className="ml-2 text-xs text-[var(--muted)]">{f.key}</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="text-[var(--muted)]">Type:</span>
+                      <Badge tone="neutral">{f.type === "select" ? "Dropdown" : f.type === "number" ? "Number" : "Text"}</Badge>
+                      {f.required && <Badge tone="warning">Required</Badge>}
+                      <span className="text-[var(--muted)]">Status:</span>
+                      <Badge tone={f.status === "active" ? "success" : f.status === "disabled" ? "neutral" : "danger"}>
+                        {f.status === "active" ? "Active" : f.status === "disabled" ? "Disabled" : "Hidden"}
+                      </Badge>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 text-xs text-[var(--muted)]">
+                Legend: <span className="font-medium text-[var(--brand)]">Required</span> = must be filled when adding a product ·{" "}
+                <span className="font-medium text-[var(--brand)]">Active</span> = shown on the product form ·{" "}
+                <span className="font-medium text-[var(--brand)]">Disabled</span> = shown but locked ·{" "}
+                <span className="font-medium text-[var(--brand)]">Hidden</span> = not shown.
+              </p>
+            </>
           )}
         </Card>
       )}
