@@ -24,6 +24,7 @@ export default async function NewProductPage({ params }: { params: Promise<{ por
   const categoryOptions = (categories as any[]).map((c) => ({
     id: c.id,
     name: c.name,
+    parentId: c.parentId ?? null,
     fields: Array.isArray(c.fields) ? c.fields : (c.fields ? [] : []),
   }));
 

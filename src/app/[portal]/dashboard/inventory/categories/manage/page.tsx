@@ -52,18 +52,50 @@ export default async function ManageCategoriesPage({
   if (status === "active") where.isActive = true;
   else if (status === "inactive") where.isActive = false;
 
-  const [raw, total] = await Promise.all([
+  // Mains (filtered + paginated)
+  const [rawMains, total] = await Promise.all([
     prisma.category.findMany({
-      where,
+      where: { ...where, parentId: null },
       orderBy: { name: "asc" },
       include: { _count: { select: { products: true } } },
       skip: (page - 1) * pageSize,
       take: pageSize,
     } as any),
-    prisma.category.count({ where }),
+    prisma.category.count({ where: { ...where, parentId: null } }),
   ]);
 
-  const all: Cat[] = raw.map((c: any) => ({
+  // When searching, also include mains that have a matching subcategory, so the
+  // subcategory list view shows all subcategories (matched or not) under them.
+  let mainIds = (rawMains as any[]).map((c: any) => c.id);
+  if (q) {
+    const extra = await prisma.category.findMany({
+      where: { tenantId, parentId: { not: null }, name: { contains: q, mode: "insensitive" } },
+      select: { parentId: true },
+    } as any);
+    const extras = (extra as any[]).map((c: any) => c.parentId).filter(Boolean);
+    mainIds = Array.from(new Set([...mainIds, ...extras]));
+  }
+
+  // Fetch ALL subcategories of the visible mains (unfiltered by sub name/status)
+  // so every main card lists all of its subcategories.
+  const rawSubs = mainIds.length
+    ? await prisma.category.findMany({
+        where: { tenantId, parentId: { in: mainIds } },
+        orderBy: { name: "asc" },
+        include: { _count: { select: { products: true } } },
+      } as any)
+    : [];
+
+  const mains: Cat[] = (rawMains as any[]).map((c: any) => ({
+    id: c.id,
+    name: c.name,
+    description: c.description,
+    isActive: c.isActive,
+    parentId: c.parentId,
+    createdAt: c.createdAt,
+    productCount: c._count?.products ?? 0,
+  }));
+  const subs: Cat[] = (rawSubs as any[]).map((c: any) => ({
     id: c.id,
     name: c.name,
     description: c.description,
@@ -73,12 +105,12 @@ export default async function ManageCategoriesPage({
     productCount: c._count?.products ?? 0,
   }));
 
-  const mains = all.filter((c) => !c.parentId);
   const byParent = new Map<string, Cat[]>();
-  for (const c of all.filter((x) => x.parentId)) {
-    const arr = byParent.get(c.parentId!) ?? [];
-    arr.push(c);
-    byParent.set(c.parentId!, arr);
+  for (const s of subs) {
+    if (!s.parentId) continue;
+    const arr = byParent.get(s.parentId) ?? [];
+    arr.push(s);
+    byParent.set(s.parentId, arr);
   }
 
   const canCreate = can(keys, "inventory.category.create");
@@ -99,7 +131,7 @@ export default async function ManageCategoriesPage({
         <FilterSelect name="status" defaultValue={status} placeholder="All statuses" options={[{ value: "active", label: "Active" }, { value: "inactive", label: "Inactive" }]} />
       </FilterBar>
 
-      {mains.length === 0 && all.length === 0 ? (
+      {mains.length === 0 && subs.length === 0 ? (
         <Card>
           <EmptyState
             title="No categories yet"
@@ -107,7 +139,7 @@ export default async function ManageCategoriesPage({
             action={canCreate ? <LinkButton href={`${base}/dashboard/inventory/categories/new`}>New category</LinkButton> : undefined}
           />
         </Card>
-      ) : mains.length === 0 && all.length > 0 ? (
+      ) : mains.length === 0 && subs.length > 0 ? (
         <Card>
           <EmptyState
             title="All categories are nested"

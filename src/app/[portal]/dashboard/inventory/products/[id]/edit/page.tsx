@@ -49,6 +49,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ po
   const categoryOptions = (categories as any[]).map((c) => ({
     id: c.id,
     name: c.name,
+    parentId: c.parentId ?? null,
     fields: Array.isArray(c.fields) ? c.fields : [],
   }));
 

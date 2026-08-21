@@ -9,6 +9,7 @@ export type BarcodeRow = { id: string; barcode: string; format: string; isPrimar
 export type CategoryOption = {
   id: string;
   name: string;
+  parentId?: string | null;
   fields?: { key: string; label: string; type: "text" | "number" | "select"; required?: boolean; options?: string[]; status?: "active" | "disabled" | "hidden" }[] | null;
 };
 
@@ -105,9 +106,26 @@ export function ProductFormFields({
           className={controlClass}
         >
           <option value="">Select category</option>
-          {categoryOptions.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
+          {categoryOptions
+            .filter((c) => !c.parentId)
+            .map((main) => (
+              <optgroup key={main.id} label={main.name}>
+                <option value={main.id}>{main.name} (main)</option>
+                {categoryOptions
+                  .filter((c) => c.parentId === main.id)
+                  .map((sub) => (
+                    <option key={sub.id} value={sub.id}>
+                      {main.name} › {sub.name}
+                    </option>
+                  ))}
+              </optgroup>
+            ))}
+          {categoryOptions.filter((c) => !c.parentId).length === 0 &&
+            categoryOptions.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
         </select>
       </div>
       <div>
