@@ -50,14 +50,10 @@ export default async function NewCategoryPage({
           {isSub && <input type="hidden" name="parentId" value={lockedParent!.id} />}
           <FormSection title="Category" description="Name and hierarchy placement.">
             <Field label="Name" name="name" required />
-            {isSub ? (
-              <div className="rounded-lg border bg-[var(--background)] px-3 py-2.5 text-sm">
-                Parent: <span className="font-medium">{lockedParent!.name}</span>
-                <p className="mt-1 text-xs text-[var(--muted)]">Subcategories inherit this main category as their parent.</p>
-              </div>
-            ) : (
-              <CategoryFields parentOptions={parentOptions} />
-            )}
+            <CategoryFields
+              parentOptions={parentOptions}
+              defaultValueParent={lockedParent ? lockedParent.id : ""}
+            />
             <Field label="Description" name="description" />
           </FormSection>
         </ActionForm>
