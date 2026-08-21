@@ -155,7 +155,7 @@ export default async function CategoryDetailPage({ params }: { params: Promise<{
           description={products.length ? `${products.length} product(s) in this category.` : "No products in this category yet."}
           footer={
             can(keys, "inventory.product.create") ? (
-              <LinkButton href={`${base}/dashboard/inventory/products/new`} variant="secondary" size="sm">
+              <LinkButton href={`${base}/dashboard/inventory/products/new?categoryId=${category.id}`} variant="secondary" size="sm">
                 + Add product
               </LinkButton>
             ) : undefined

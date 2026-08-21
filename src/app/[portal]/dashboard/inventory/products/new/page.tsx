@@ -8,7 +8,13 @@ import { ProductFormFields } from "../ProductFormFields";
 
 export const dynamic = "force-dynamic";
 
-export default async function NewProductPage({ params }: { params: Promise<{ portal: string }> }) {
+export default async function NewProductPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ portal: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { portal: slug } = await params;
   const portal = await resolvePortal(slug);
   if (!portal) notFound();
@@ -16,6 +22,9 @@ export default async function NewProductPage({ params }: { params: Promise<{ por
   if (!session) redirect(`${portal.base}/login`);
   const keys = await getPermissionKeys(session.sub, session.isSuperAdmin);
   if (!can(keys, "inventory.product.create")) redirect(`${portal.base}/dashboard/inventory`);
+
+  const sp = await searchParams;
+  const presetCategoryId = typeof sp.categoryId === "string" ? sp.categoryId : "";
 
   const base = portal.base;
   const categories = await prisma.category.findMany({ where: { tenantId: session.tenantId!, isActive: true }, orderBy: { name: "asc" } });
@@ -40,6 +49,7 @@ export default async function NewProductPage({ params }: { params: Promise<{ por
               productType="NON_SERIALIZED"
               categoryOptions={categoryOptions}
               brandOptions={brands as any}
+              defaultCategoryId={presetCategoryId}
             />
             <Field label="Unit of measure" name="unitOfMeasure" defaultValue="pc" />
             <div className="sm:col-span-2">
