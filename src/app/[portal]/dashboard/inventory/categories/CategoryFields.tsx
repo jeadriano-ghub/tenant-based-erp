@@ -23,11 +23,13 @@ export function CategoryFields({
   parentOptions,
   defaultValueParent,
   parentName,
+  parentLockedHint,
   initialFields,
 }: {
   parentOptions: { id: string; name: string }[];
   defaultValueParent?: string | null;
   parentName?: string | null;
+  parentLockedHint?: string | null;
   initialFields?: CategorySpecField[];
 }) {
   const [fields, setFields] = useState<CategorySpecField[]>(
@@ -82,7 +84,7 @@ export function CategoryFields({
         <div className="rounded-lg border bg-[var(--background)] px-3 py-2.5 text-sm">
           Parent: <span className="font-medium">{parentName || (defaultValueParent ? "Locked" : "— (main category)")}</span>
           {defaultValueParent && (
-            <p className="mt-1 text-xs text-[var(--muted)]">This is a subcategory; its parent cannot be changed here.</p>
+            <p className="mt-1 text-xs text-[var(--muted)]">{parentLockedHint || "This is a subcategory; its parent cannot be changed here."}</p>
           )}
         </div>
       ) : (

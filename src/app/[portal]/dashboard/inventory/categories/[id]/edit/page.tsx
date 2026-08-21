@@ -41,9 +41,12 @@ export default async function EditCategoryPage({ params }: { params: Promise<{ p
 
   const initialFields = parseFields(category.fields);
   // Subcategories keep their parent (it can't be changed here), so prefill it as a locked parent.
+  // Main categories that already have subcategories are also locked (reparenting would orphan children).
   const isSub = Boolean(category.parentId);
-  const parentOptions = isSub
-    ? [] // no reparenting; parent is locked
+  const childCount = await prisma.category.count({ where: { tenantId: session.tenantId!, parentId: id } } as any);
+  const parentLocked = isSub || childCount > 0;
+  const parentOptions = parentLocked
+    ? [] // parent is locked
     : await prisma.category.findMany({
         where: { tenantId: session.tenantId!, isActive: true, parentId: null, id: { not: id } },
         orderBy: { name: "asc" },
@@ -51,6 +54,11 @@ export default async function EditCategoryPage({ params }: { params: Promise<{ p
   const parentName = category.parentId
     ? await prisma.category.findUnique({ where: { id: category.parentId } } as any).then((p: any) => p?.name ?? null)
     : null;
+  const parentLockedHint = isSub
+    ? "This is a subcategory; its parent cannot be changed here."
+    : childCount > 0
+      ? "This main category has subcategories, so its parent cannot be changed."
+      : undefined;
 
   return (
     <div>
@@ -65,6 +73,7 @@ export default async function EditCategoryPage({ params }: { params: Promise<{ p
               parentOptions={parentOptions as any[]}
               defaultValueParent={category.parentId ?? ""}
               parentName={parentName}
+              parentLockedHint={parentLockedHint}
               initialFields={initialFields}
             />
             <Field label="Description" name="description" defaultValue={category.description ?? ""} />
