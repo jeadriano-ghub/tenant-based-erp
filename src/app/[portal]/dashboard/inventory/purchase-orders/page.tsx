@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { requireSession, getPermissionKeys, can, resolvePortal } from "@/lib/auth";
 import { PageHeader, Card, Badge, LinkButton, EmptyState } from "@/components/ui";
 import { ResponsiveList } from "@/components/responsive-list";
+import { Pagination } from "@/components/pagination";
+import { FilterBar, FilterInput, FilterSelect } from "@/components/filter-bar";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +15,15 @@ const STATUS_TONE: Record<string, "neutral" | "success" | "warning" | "danger" |
   CANCELLED: "danger",
 };
 
-export default async function PurchaseOrdersPage({ params }: { params: Promise<{ portal: string }> }) {
+const PAGE_SIZE = 15;
+
+export default async function PurchaseOrdersPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ portal: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { portal: slug } = await params;
   const portal = await resolvePortal(slug);
   if (!portal) notFound();
@@ -22,38 +32,48 @@ export default async function PurchaseOrdersPage({ params }: { params: Promise<{
   const keys = await getPermissionKeys(session.sub, session.isSuperAdmin);
   if (!can(keys, "inventory.purchase_order.view")) redirect(`${portal.base}/dashboard/inventory`);
 
+  const sp = await searchParams;
+  const q = typeof sp.q === "string" ? sp.q.trim() : "";
+  const supplierId = typeof sp.supplier === "string" ? sp.supplier : "";
+  const status = typeof sp.status === "string" ? sp.status : "";
+  const page = Math.max(1, Number(typeof sp.page === "string" ? sp.page : "1") || 1);
+
   const base = portal.base;
-  const purchaseOrders: any[] = await prisma.purchaseOrder.findMany({
-    where: { tenantId: session.tenantId! },
-    orderBy: { createdAt: "desc" },
-  });
-  const supplierIds = Array.from(new Set(purchaseOrders.map((po: any) => po.supplierId).filter(Boolean)));
-  const suppliers: any[] = supplierIds.length
-    ? await prisma.supplier.findMany({ where: { id: { in: supplierIds } }, select: { id: true, name: true } })
-    : [];
-  const supplierMap = new Map(suppliers.map((s: any) => [s.id, s.name]));
+  const basePath = `${base}/dashboard/inventory/purchase-orders`;
   const canCreate = can(keys, "inventory.purchase_order.create");
   const canUpdate = can(keys, "inventory.purchase_order.update");
+
+  const where: any = { tenantId: session.tenantId! };
+  if (q) where.referenceNo = { contains: q, mode: "insensitive" };
+  if (supplierId) where.supplierId = supplierId;
+  if (status) where.status = status;
+
+  const [purchaseOrders, total, suppliers] = await Promise.all([
+    prisma.purchaseOrder.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE }),
+    prisma.purchaseOrder.count({ where }),
+    prisma.supplier.findMany({ where: { tenantId: session.tenantId! }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+  ]);
+  const supplierMap = new Map(suppliers.map((s: any) => [s.id, s.name]));
 
   return (
     <div>
       <PageHeader
         title="Purchase orders"
         description="Procurement orders and receipt status."
-        action={
-          canCreate ? <LinkButton href={`${base}/dashboard/inventory/purchase-orders/new`}>New purchase order</LinkButton> : undefined
-        }
+        action={canCreate ? <LinkButton href={`${basePath}/new`}>New purchase order</LinkButton> : undefined}
       />
       <Card>
-        {purchaseOrders.length === 0 ? (
-          <EmptyState
-            title="No purchase orders yet"
-            action={canCreate ? <LinkButton href={`${base}/dashboard/inventory/purchase-orders/new`}>New purchase order</LinkButton> : undefined}
-          />
+        <FilterBar basePath={basePath}>
+          <FilterInput name="q" defaultValue={q} placeholder="Search reference" />
+          <FilterSelect name="supplier" defaultValue={supplierId} placeholder="All suppliers" options={suppliers.map((s: any) => ({ value: s.id, label: s.name }))} />
+          <FilterSelect name="status" defaultValue={status} placeholder="All statuses" options={Object.keys(STATUS_TONE).map((s) => ({ value: s, label: s }))} />
+        </FilterBar>
+        {total === 0 ? (
+          <EmptyState title="No purchase orders found" action={canCreate ? <LinkButton href={`${basePath}/new`}>New purchase order</LinkButton> : undefined} />
         ) : (
           <ResponsiveList
             rows={purchaseOrders}
-            href={(po) => `${base}/dashboard/inventory/purchase-orders/${po.id}`}
+            href={(po) => `${basePath}/${po.id}`}
             primary={(po) => po.referenceNo || `PO ${po.id}`}
             secondary={(po) => supplierMap.get(po.supplierId) || ""}
             meta={(po) => [{ label: "Status", value: <Badge tone={STATUS_TONE[po.status] ?? "neutral"}>{po.status}</Badge> }]}
@@ -65,13 +85,12 @@ export default async function PurchaseOrdersPage({ params }: { params: Promise<{
             ]}
             actions={(po) => (
               <div className="flex flex-wrap gap-2">
-                {canUpdate && (
-                  <LinkButton href={`${base}/dashboard/inventory/purchase-orders/${po.id}/edit`} variant="secondary" size="sm">Edit</LinkButton>
-                )}
+                {canUpdate && <LinkButton href={`${basePath}/${po.id}/edit`} variant="secondary" size="sm">Edit</LinkButton>}
               </div>
             )}
           />
         )}
+        <Pagination searchParams={sp} page={page} pageSize={PAGE_SIZE} total={total} basePath={basePath} />
       </Card>
     </div>
   );

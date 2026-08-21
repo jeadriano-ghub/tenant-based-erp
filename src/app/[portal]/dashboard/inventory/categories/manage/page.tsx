@@ -3,9 +3,13 @@ import { prisma } from "@/lib/db";
 import { requireSession, getPermissionKeys, can, resolvePortal } from "@/lib/auth";
 import { PageHeader, Card, Badge, LinkButton, EmptyState } from "@/components/ui";
 import { DeleteButton } from "@/components/form";
+import { Pagination } from "@/components/pagination";
+import { FilterBar, FilterInput, FilterSelect } from "@/components/filter-bar";
 import { deleteCategoryAction } from "../../../actions";
 
 export const dynamic = "force-dynamic";
+
+const PAGE_SIZE = 12;
 
 type Cat = {
   id: string;
@@ -17,7 +21,13 @@ type Cat = {
   productCount: number;
 };
 
-export default async function ManageCategoriesPage({ params }: { params: Promise<{ portal: string }> }) {
+export default async function ManageCategoriesPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ portal: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { portal: slug } = await params;
   const portal = await resolvePortal(slug);
   if (!portal) notFound();
@@ -26,14 +36,30 @@ export default async function ManageCategoriesPage({ params }: { params: Promise
   const keys = await getPermissionKeys(session.sub, session.isSuperAdmin);
   if (!can(keys, "inventory.product.view")) redirect(`${portal.base}/dashboard/inventory`);
 
+  const sp = await searchParams;
+  const q = typeof sp.q === "string" ? sp.q.trim() : "";
+  const status = typeof sp.status === "string" ? sp.status : "";
+  const page = Math.max(1, Number(typeof sp.page === "string" ? sp.page : "1") || 1);
+
   const base = portal.base;
+  const basePath = `${base}/dashboard/inventory/categories/manage`;
   const tenantId = session.tenantId!;
 
-  const raw = await prisma.category.findMany({
-    where: { tenantId },
-    orderBy: { name: "asc" },
-    include: { _count: { select: { products: true } } },
-  } as any);
+  const where: any = { tenantId };
+  if (q) where.name = { contains: q, mode: "insensitive" };
+  if (status === "active") where.isActive = true;
+  else if (status === "inactive") where.isActive = false;
+
+  const [raw, total] = await Promise.all([
+    prisma.category.findMany({
+      where,
+      orderBy: { name: "asc" },
+      include: { _count: { select: { products: true } } },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    } as any),
+    prisma.category.count({ where }),
+  ]);
 
   const all: Cat[] = raw.map((c: any) => ({
     id: c.id,
@@ -63,12 +89,13 @@ export default async function ManageCategoriesPage({ params }: { params: Promise
         title="Categories"
         description="Organize products into main categories and nested subcategories."
         breadcrumb={{ href: `${base}/dashboard/inventory/categories`, label: "Categories" }}
-        action={
-          canCreate ? (
-            <LinkButton href={`${base}/dashboard/inventory/categories/new`}>New category</LinkButton>
-          ) : undefined
-        }
+        action={canCreate ? <LinkButton href={`${base}/dashboard/inventory/categories/new`}>New category</LinkButton> : undefined}
       />
+
+      <FilterBar basePath={basePath}>
+        <FilterInput name="q" defaultValue={q} placeholder="Search category" />
+        <FilterSelect name="status" defaultValue={status} placeholder="All statuses" options={[{ value: "active", label: "Active" }, { value: "inactive", label: "Inactive" }]} />
+      </FilterBar>
 
       {mains.length === 0 && all.length === 0 ? (
         <Card>
@@ -95,46 +122,27 @@ export default async function ManageCategoriesPage({ params }: { params: Promise
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <LinkButton
-                        variant="ghost"
-                        href={`${base}/dashboard/inventory/categories/${m.id}`}
-                        className="!px-0 !text-base !font-semibold"
-                      >
+                      <LinkButton variant="ghost" href={`${base}/dashboard/inventory/categories/${m.id}`} className="!px-0 !text-base !font-semibold">
                         {m.name}
                       </LinkButton>
                       <Badge tone={m.isActive ? "success" : "neutral"}>{m.isActive ? "Active" : "Inactive"}</Badge>
                       <Badge tone="brand">{m.productCount} products</Badge>
                     </div>
-                    {m.description && (
-                      <p className="mt-1 text-sm text-[var(--muted)]">{m.description}</p>
-                    )}
+                    {m.description && <p className="mt-1 text-sm text-[var(--muted)]">{m.description}</p>}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {canCreate && (
-                      <LinkButton
-                        variant="secondary"
-                        size="sm"
-                        href={`${base}/dashboard/inventory/categories/new?parentId=${m.id}`}
-                      >
+                      <LinkButton variant="secondary" size="sm" href={`${base}/dashboard/inventory/categories/new?parentId=${m.id}`}>
                         + Subcategory
                       </LinkButton>
                     )}
                     {canUpdate && (
-                      <LinkButton
-                        variant="secondary"
-                        size="sm"
-                        href={`${base}/dashboard/inventory/categories/${m.id}/edit`}
-                      >
+                      <LinkButton variant="secondary" size="sm" href={`${base}/dashboard/inventory/categories/${m.id}/edit`}>
                         Edit
                       </LinkButton>
                     )}
                     {canDelete && (
-                      <DeleteButton
-                        action={deleteCategoryAction}
-                        portal={portal.slug}
-                        id={m.id}
-                        confirmText={`Delete main category "${m.name}" and unlink its subcategories?`}
-                      />
+                      <DeleteButton action={deleteCategoryAction} portal={portal.slug} id={m.id} confirmText={`Delete main category "${m.name}" and unlink its subcategories?`} />
                     )}
                   </div>
                 </div>
@@ -142,16 +150,9 @@ export default async function ManageCategoriesPage({ params }: { params: Promise
                 {subs.length > 0 ? (
                   <ul className="mt-4 grid gap-2 border-t pt-4 sm:grid-cols-2 lg:grid-cols-3">
                     {subs.map((s) => (
-                      <li
-                        key={s.id}
-                        className="flex items-center justify-between gap-2 rounded-lg border bg-[var(--background)] px-3 py-2"
-                      >
+                      <li key={s.id} className="flex items-center justify-between gap-2 rounded-lg border bg-[var(--background)] px-3 py-2">
                         <div className="min-w-0">
-                          <LinkButton
-                            variant="ghost"
-                            href={`${base}/dashboard/inventory/categories/${s.id}`}
-                            className="!px-0 !text-sm !font-medium"
-                          >
+                          <LinkButton variant="ghost" href={`${base}/dashboard/inventory/categories/${s.id}`} className="!px-0 !text-sm !font-medium">
                             {s.name}
                           </LinkButton>
                           <div className="mt-0.5 flex items-center gap-1.5">
@@ -161,22 +162,12 @@ export default async function ManageCategoriesPage({ params }: { params: Promise
                         </div>
                         <div className="flex shrink-0 gap-1">
                           {canUpdate && (
-                            <LinkButton
-                              variant="ghost"
-                              size="sm"
-                              href={`${base}/dashboard/inventory/categories/${s.id}/edit`}
-                              className="!px-2"
-                            >
+                            <LinkButton variant="ghost" size="sm" href={`${base}/dashboard/inventory/categories/${s.id}/edit`} className="!px-2">
                               Edit
                             </LinkButton>
                           )}
                           {canDelete && (
-                            <DeleteButton
-                              action={deleteCategoryAction}
-                              portal={portal.slug}
-                              id={s.id}
-                              confirmText={`Delete subcategory "${s.name}"?`}
-                            />
+                            <DeleteButton action={deleteCategoryAction} portal={portal.slug} id={s.id} confirmText={`Delete subcategory "${s.name}"?`} />
                           )}
                         </div>
                       </li>
@@ -188,10 +179,9 @@ export default async function ManageCategoriesPage({ params }: { params: Promise
               </Card>
             );
           })}
-
-          {all.filter((c) => !mains.some((m) => m.id === c.id) && !c.parentId).length === 0 && null}
         </div>
       )}
+      <Pagination searchParams={sp} page={page} pageSize={PAGE_SIZE} total={total} basePath={basePath} />
     </div>
   );
 }
