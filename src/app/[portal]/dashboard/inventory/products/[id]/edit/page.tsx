@@ -68,6 +68,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ po
               sellingPrice={product.sellingPrice != null ? String(product.sellingPrice) : ""}
               initialPrices={prices}
               initialBarcodes={barcodes}
+              initialSpecs={Array.isArray(product.specs) ? (product.specs as any[]) : []}
               categoryOptions={categoryOptions}
               brandOptions={brands as any}
               defaultCategoryId={product.categoryId}

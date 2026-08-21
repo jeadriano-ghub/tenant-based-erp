@@ -48,6 +48,17 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           ]}
         />
       </Card>
+
+      {Array.isArray(product.specs) && (product.specs as any[]).length > 0 && (
+        <Card title="Specifications" description="Category-specific spec values for this product.">
+          <DescriptionList
+            items={(product.specs as any[]).map((s: any) => ({
+              label: s.key ?? "—",
+              value: s.value != null && s.value !== "" ? String(s.value) : "—",
+            }))}
+          />
+        </Card>
+      )}
     </div>
   );
 }

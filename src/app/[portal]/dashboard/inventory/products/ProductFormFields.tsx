@@ -29,6 +29,7 @@ export function ProductFormFields({
   sellingPrice,
   initialPrices,
   initialBarcodes,
+  initialSpecs,
   categoryOptions = [],
   brandOptions = [],
   defaultCategoryId,
@@ -39,6 +40,7 @@ export function ProductFormFields({
   sellingPrice?: string | null;
   initialPrices?: PriceTier[];
   initialBarcodes?: BarcodeRow[];
+  initialSpecs?: { key: string; value: string }[] | null;
   categoryOptions?: CategoryOption[];
   brandOptions?: { id: string; name: string }[];
   defaultCategoryId?: string | null;
@@ -57,7 +59,9 @@ export function ProductFormFields({
   const specFields = selectedCategory?.fields ?? [];
 
   // spec field values keyed by field key
-  const [specValues, setSpecValues] = useState<Record<string, string>>({});
+  const [specValues, setSpecValues] = useState<Record<string, string>>(
+    () => Object.fromEntries((initialSpecs ?? []).map((s) => [s.key, s.value ?? ""])),
+  );
   const updateSpec = (key: string, val: string) =>
     setSpecValues((prev) => ({ ...prev, [key]: val }));
   const specJson = useMemo(() => {
