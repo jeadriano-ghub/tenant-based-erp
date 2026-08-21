@@ -53,6 +53,7 @@ export default async function NewCategoryPage({
             <CategoryFields
               parentOptions={parentOptions}
               defaultValueParent={lockedParent ? lockedParent.id : ""}
+              parentName={lockedParent ? lockedParent.name : null}
             />
             <Field label="Description" name="description" />
           </FormSection>

@@ -48,6 +48,9 @@ export default async function EditCategoryPage({ params }: { params: Promise<{ p
         where: { tenantId: session.tenantId!, isActive: true, parentId: null, id: { not: id } },
         orderBy: { name: "asc" },
       } as any);
+  const parentName = category.parentId
+    ? await prisma.category.findUnique({ where: { id: category.parentId } } as any).then((p: any) => p?.name ?? null)
+    : null;
 
   return (
     <div>
@@ -61,6 +64,7 @@ export default async function EditCategoryPage({ params }: { params: Promise<{ p
             <CategoryFields
               parentOptions={parentOptions as any[]}
               defaultValueParent={category.parentId ?? ""}
+              parentName={parentName}
               initialFields={initialFields}
             />
             <Field label="Description" name="description" defaultValue={category.description ?? ""} />
