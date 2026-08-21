@@ -10,7 +10,7 @@ type SupplierOpt = { id: string; name: string; termsDays: number | null };
 type ProductOpt = { id: string; name: string; sku: string; costPrice: number | null; categoryId: string | null };
 type CategoryOpt = { id: string; name: string };
 
-type Row = { id: string; productId: string; quantity: string; unitCost: string };
+type Row = { id: string; productId: string; quantity: string; unitCost: string; costEdited: boolean };
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 
@@ -59,8 +59,8 @@ export function PurchaseOrderForm({
   const [taxRate, setTaxRate] = useState(String(defaults?.taxRate ?? globalTaxRate));
   const [rows, setRows] = useState<Row[]>(
     defaults?.supplierId
-      ? [{ id: uid(), productId: "", quantity: "", unitCost: "" }]
-      : [{ id: uid(), productId: "", quantity: "", unitCost: "" }],
+      ? [{ id: uid(), productId: "", quantity: "", unitCost: "", costEdited: false }]
+      : [{ id: uid(), productId: "", quantity: "", unitCost: "", costEdited: false }],
   );
   const [supplierCredit, setSupplierCredit] = useState(String(defaults?.supplierCreditApplied ?? ""));
   const [earnedCredit, setEarnedCredit] = useState(String(defaults?.earnedCredit ?? ""));
@@ -72,7 +72,7 @@ export function PurchaseOrderForm({
     setTermsDays(String(s?.termsDays ?? 30));
   };
 
-  const addRow = () => setRows((r) => [...r, { id: uid(), productId: "", quantity: "", unitCost: "" }]);
+  const addRow = () => setRows((r) => [...r, { id: uid(), productId: "", quantity: "", unitCost: "", costEdited: false }]);
   const updateRow = (id: string, key: keyof Row, val: string) =>
     setRows((r) => r.map((x) => (x.id === id ? { ...x, [key]: val } : x)));
 
@@ -81,11 +81,10 @@ export function PurchaseOrderForm({
     setRows((r) =>
       r.map((x) => {
         if (x.id !== id) return x;
-        // Auto-fill unit cost from the product's current costPrice when a product is picked,
-        // but don't overwrite a cost the user has already typed.
-        const unitCost = productId && (x.unitCost === "" || x.unitCost == null)
-          ? String(p?.costPrice ?? "")
-          : x.unitCost;
+        // On product select, always re-derive the unit cost from the new product's
+        // current costPrice (unless the user manually edited this row's cost).
+        const unitCost =
+          productId && !x.costEdited ? String(p?.costPrice ?? "") : x.unitCost;
         return { ...x, productId, unitCost };
       }),
     );
@@ -159,7 +158,7 @@ export function PurchaseOrderForm({
                   {products.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.sku}){p.costPrice != null ? ` · ₱${Number(p.costPrice).toFixed(2)}` : ""}</option>)}
                 </select>
                 <input name="quantity" type="number" min="1" value={r.quantity} onChange={(e) => updateRow(r.id, "quantity", e.target.value)} placeholder="Qty" className={controlClass} />
-                <input name="unitCost" type="number" step="0.01" value={r.unitCost} onChange={(e) => updateRow(r.id, "unitCost", e.target.value)} placeholder="Cost" className={controlClass} />
+                <input name="unitCost" type="number" step="0.01" value={r.unitCost} onChange={(e) => { updateRow(r.id, "unitCost", e.target.value); setRows((rs) => rs.map((x) => (x.id === r.id ? { ...x, costEdited: true } : x))); }} placeholder="Cost" className={controlClass} />
                 <button type="button" onClick={() => removeRow(r.id)} disabled={rows.length === 1} className="rounded-md border px-2 py-2 text-xs text-red-500 disabled:opacity-40">✕</button>
               </div>
             ))}
