@@ -113,6 +113,14 @@ export default async function ManageCategoriesPage({
     byParent.set(s.parentId, arr);
   }
 
+  // Roll subcategory product counts up into each main category's total.
+  const subProductTotals = new Map<string, number>();
+  for (const s of subs) {
+    if (!s.parentId) continue;
+    subProductTotals.set(s.parentId, (subProductTotals.get(s.parentId) ?? 0) + s.productCount);
+  }
+  const mainProductCount = (m: Cat) => m.productCount + (subProductTotals.get(m.id) ?? 0);
+
   const canCreate = can(keys, "inventory.category.create");
   const canUpdate = can(keys, "inventory.category.update");
   const canDelete = can(keys, "inventory.category.delete");
@@ -160,7 +168,7 @@ export default async function ManageCategoriesPage({
                         {m.name}
                       </LinkButton>
                       <Badge tone={m.isActive ? "success" : "neutral"}>{m.isActive ? "Active" : "Inactive"}</Badge>
-                      <Badge tone="brand">{m.productCount} products</Badge>
+                      <Badge tone="brand">{mainProductCount(m)} products</Badge>
                     </div>
                     {m.description && <p className="mt-1 text-sm text-[var(--muted)]">{m.description}</p>}
                   </div>
