@@ -18,27 +18,27 @@ BEGIN
   INSERT INTO "Brand" (id,"tenantId",name,"createdAt","updatedAt") VALUES (gen_random_uuid(),tid,'D-Link',now(),now()) ON CONFLICT ("tenantId",name) DO NOTHING;
 
   -- Suppliers (unique tenant+name)
-  INSERT INTO "Supplier" (id,"tenantId",name,contactPerson,email,contactNo,"addressLine1",city,"tin","businessRegNo","termsDays","isActive","createdAt","updatedAt")
-  VALUES (gen_random_uuid(),tid,'PC Central Trading','Juan Dela Cruz','juan@pccentral.ph','09171234567','123 Gil Puyat Ave', 'Makati','123-456-789-000','CN-2010-12345',30,true,now(),now())
+  INSERT INTO "Supplier" (id,"tenantId",name,"contactPerson",email,"contactNo","addressLine1",city,"tin","businessRegNo","termsDays","isActive","createdAt","updatedAt")
+  VALUES (gen_random_uuid(),tid,'PC Central Trading','Juan Dela Cruz','juan@pccentral.ph','09171234567','123 Gil Puyat Ave','Makati','123-456-789-000','CN-2010-12345',30,true,now(),now())
   ON CONFLICT ("tenantId",name) DO NOTHING;
   SELECT id INTO s1 FROM "Supplier" WHERE "tenantId"=tid AND name='PC Central Trading';
 
-  INSERT INTO "Supplier" (id,"tenantId",name,contactPerson,email,contactNo,"addressLine1",city,"tin","businessRegNo","termsDays","isActive","createdAt","updatedAt")
+  INSERT INTO "Supplier" (id,"tenantId",name,"contactPerson",email,"contactNo","addressLine1",city,"tin","businessRegNo","termsDays","isActive","createdAt","updatedAt")
   VALUES (gen_random_uuid(),tid,'TechSource Inc.','Maria Santos','maria@techsource.ph','09179876543','88 Quezon Ave','Quezon City','987-654-321-000','CN-2008-98765',15,true,now(),now())
   ON CONFLICT ("tenantId",name) DO NOTHING;
   SELECT id INTO s2 FROM "Supplier" WHERE "tenantId"=tid AND name='TechSource Inc.';
 
-  INSERT INTO "Supplier" (id,"tenantId",name,contactPerson,email,contactNo,"addressLine1",city,"tin","businessRegNo","termsDays","isActive","createdAt","updatedAt")
+  INSERT INTO "Supplier" (id,"tenantId",name,"contactPerson",email,"contactNo","addressLine1",city,"tin","businessRegNo","termsDays","isActive","createdAt","updatedAt")
   VALUES (gen_random_uuid(),tid,'Gadget Wholesale','Pedro Reyes','pedro@gadget.ph','09173334444','45 Escolta St','Manila','111-222-333-000','CN-2015-54321',45,true,now(),now())
   ON CONFLICT ("tenantId",name) DO NOTHING;
   SELECT id INTO s3 FROM "Supplier" WHERE "tenantId"=tid AND name='Gadget Wholesale';
 
-  INSERT INTO "Supplier" (id,"tenantId",name,contactPerson,email,contactNo,"addressLine1",city,"tin","businessRegNo","termsDays","isActive","createdAt","updatedAt")
+  INSERT INTO "Supplier" (id,"tenantId",name,"contactPerson",email,"contactNo","addressLine1",city,"tin","businessRegNo","termsDays","isActive","createdAt","updatedAt")
   VALUES (gen_random_uuid(),tid,'Prime Components','Ana Cruz','ana@primecomp.ph','09175556666','9 Ayala Blvd','Pasay','444-555-666-000','CN-2012-11122',7,true,now(),now())
   ON CONFLICT ("tenantId",name) DO NOTHING;
   SELECT id INTO s4 FROM "Supplier" WHERE "tenantId"=tid AND name='Prime Components';
 
-  INSERT INTO "Supplier" (id,"tenantId",name,contactPerson,email,contactNo,"addressLine1",city,"tin","businessRegNo","termsDays","isActive","createdAt","updatedAt")
+  INSERT INTO "Supplier" (id,"tenantId",name,"contactPerson",email,"contactNo","addressLine1",city,"tin","businessRegNo","termsDays","isActive","createdAt","updatedAt")
   VALUES (gen_random_uuid(),tid,'NetLink Distributors','Bob Martin','bob@netlink.ph','09178889999','200 Roxas Blvd','Paranaque','777-888-999-000','CN-2019-33344',60,true,now(),now())
   ON CONFLICT ("tenantId",name) DO NOTHING;
   SELECT id INTO s5 FROM "Supplier" WHERE "tenantId"=tid AND name='NetLink Distributors';
