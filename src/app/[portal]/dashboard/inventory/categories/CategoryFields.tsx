@@ -76,20 +76,29 @@ export function CategoryFields({
       <input type="hidden" name="fieldsJson" value={fieldsJson} />
 
       {/* Category parent — uniform dropdown */}
-      <div>
-        <label className="mb-1.5 block text-sm font-medium">Parent category</label>
-        <select
-          name="parentId"
-          value={parentId}
-          onChange={(e) => setParentId(e.target.value)}
-          className={controlClass}
-        >
-          <option value="">— (main category)</option>
-          {parentOptions.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
-      </div>
+      {parentOptions.length === 0 ? (
+        <div className="rounded-lg border bg-[var(--background)] px-3 py-2.5 text-sm">
+          Parent: <span className="font-medium">{defaultValueParent ? "Locked" : "— (main category)"}</span>
+          {defaultValueParent && (
+            <p className="mt-1 text-xs text-[var(--muted)]">This is a subcategory; its parent cannot be changed here.</p>
+          )}
+        </div>
+      ) : (
+        <div>
+          <label className="mb-1.5 block text-sm font-medium">Parent category</label>
+          <select
+            name="parentId"
+            value={parentId}
+            onChange={(e) => setParentId(e.target.value)}
+            className={controlClass}
+          >
+            <option value="">— (main category)</option>
+            {parentOptions.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Custom specification fields — only for subcategories */}
       {isSubcategory ? (

@@ -39,16 +39,15 @@ export default async function EditCategoryPage({ params }: { params: Promise<{ p
   const category = await prisma.category.findUnique({ where: { id } } as any);
   if (!category || category.tenantId !== session.tenantId) notFound();
 
-  // Subcategories inherit parent fields; only edit parent + specs on main categories.
+  const initialFields = parseFields(category.fields);
+  // Subcategories keep their parent (it can't be changed here), so prefill it as a locked parent.
   const isSub = Boolean(category.parentId);
-  const parents = isSub
-    ? []
+  const parentOptions = isSub
+    ? [] // no reparenting; parent is locked
     : await prisma.category.findMany({
         where: { tenantId: session.tenantId!, isActive: true, parentId: null, id: { not: id } },
         orderBy: { name: "asc" },
-      });
-
-  const initialFields = parseFields(category.fields);
+      } as any);
 
   return (
     <div>
@@ -56,20 +55,14 @@ export default async function EditCategoryPage({ params }: { params: Promise<{ p
       <Card>
         <ActionForm action={saveCategoryAction} portal={slug} submitLabel="Save changes" redirectOnSuccess={`${base}/dashboard/inventory/categories/${id}`}>
           <input type="hidden" name="id" value={category.id} />
+          {isSub && <input type="hidden" name="parentId" value={category.parentId ?? ""} />}
           <FormSection title="Category" description="Update name, hierarchy, and status.">
             <Field label="Name" name="name" required defaultValue={category.name} />
-            {isSub ? (
-              <div className="rounded-lg border bg-[var(--background)] px-3 py-2.5 text-sm">
-                Parent: <span className="font-medium">{category.parentId}</span>
-                <p className="mt-1 text-xs text-[var(--muted)]">Subcategories inherit their parent&rsquo;s specification fields.</p>
-              </div>
-            ) : (
-              <CategoryFields
-                parentOptions={(parents as any[]).map((p) => ({ id: p.id, name: p.name }))}
-                defaultValueParent={category.parentId ?? ""}
-                initialFields={initialFields}
-              />
-            )}
+            <CategoryFields
+              parentOptions={parentOptions as any[]}
+              defaultValueParent={category.parentId ?? ""}
+              initialFields={initialFields}
+            />
             <Field label="Description" name="description" defaultValue={category.description ?? ""} />
           </FormSection>
         </ActionForm>
