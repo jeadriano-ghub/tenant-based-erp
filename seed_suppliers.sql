@@ -8,14 +8,14 @@ BEGIN
   IF tid IS NULL THEN RAISE NOTICE 'No tenant; skip.'; RETURN; END IF;
 
   -- Brands (idempotent)
-  INSERT INTO "Brand" (id,"tenantId",name) VALUES (gen_random_uuid(),tid,'Seagate') ON CONFLICT ("tenantId",name) DO NOTHING;
-  INSERT INTO "Brand" (id,"tenantId",name) VALUES (gen_random_uuid(),tid,'Corsair') ON CONFLICT ("tenantId",name) DO NOTHING;
-  INSERT INTO "Brand" (id,"tenantId",name) VALUES (gen_random_uuid(),tid,'Gigabyte') ON CONFLICT ("tenantId",name) DO NOTHING;
-  INSERT INTO "Brand" (id,"tenantId",name) VALUES (gen_random_uuid(),tid,'MSI') ON CONFLICT ("tenantId",name) DO NOTHING;
-  INSERT INTO "Brand" (id,"tenantId",name) VALUES (gen_random_uuid(),tid,'Kingston') ON CONFLICT ("tenantId",name) DO NOTHING;
-  INSERT INTO "Brand" (id,"tenantId",name) VALUES (gen_random_uuid(),tid,'Crucial') ON CONFLICT ("tenantId",name) DO NOTHING;
-  INSERT INTO "Brand" (id,"tenantId",name) VALUES (gen_random_uuid(),tid,'ViewSonic') ON CONFLICT ("tenantId",name) DO NOTHING;
-  INSERT INTO "Brand" (id,"tenantId",name) VALUES (gen_random_uuid(),tid,'D-Link') ON CONFLICT ("tenantId",name) DO NOTHING;
+  INSERT INTO "Brand" (id,"tenantId",name,"createdAt","updatedAt") VALUES (gen_random_uuid(),tid,'Seagate',now(),now()) ON CONFLICT ("tenantId",name) DO NOTHING;
+  INSERT INTO "Brand" (id,"tenantId",name,"createdAt","updatedAt") VALUES (gen_random_uuid(),tid,'Corsair',now(),now()) ON CONFLICT ("tenantId",name) DO NOTHING;
+  INSERT INTO "Brand" (id,"tenantId",name,"createdAt","updatedAt") VALUES (gen_random_uuid(),tid,'Gigabyte',now(),now()) ON CONFLICT ("tenantId",name) DO NOTHING;
+  INSERT INTO "Brand" (id,"tenantId",name,"createdAt","updatedAt") VALUES (gen_random_uuid(),tid,'MSI',now(),now()) ON CONFLICT ("tenantId",name) DO NOTHING;
+  INSERT INTO "Brand" (id,"tenantId",name,"createdAt","updatedAt") VALUES (gen_random_uuid(),tid,'Kingston',now(),now()) ON CONFLICT ("tenantId",name) DO NOTHING;
+  INSERT INTO "Brand" (id,"tenantId",name,"createdAt","updatedAt") VALUES (gen_random_uuid(),tid,'Crucial',now(),now()) ON CONFLICT ("tenantId",name) DO NOTHING;
+  INSERT INTO "Brand" (id,"tenantId",name,"createdAt","updatedAt") VALUES (gen_random_uuid(),tid,'ViewSonic',now(),now()) ON CONFLICT ("tenantId",name) DO NOTHING;
+  INSERT INTO "Brand" (id,"tenantId",name,"createdAt","updatedAt") VALUES (gen_random_uuid(),tid,'D-Link',now(),now()) ON CONFLICT ("tenantId",name) DO NOTHING;
 
   -- Suppliers (unique tenant+name)
   INSERT INTO "Supplier" (id,"tenantId",name,contactPerson,email,contactNo,"addressLine1",city,"tin","businessRegNo","termsDays","isActive","createdAt","updatedAt")
