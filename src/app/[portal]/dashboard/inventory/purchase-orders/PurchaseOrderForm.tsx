@@ -75,6 +75,21 @@ export function PurchaseOrderForm({
   const addRow = () => setRows((r) => [...r, { id: uid(), productId: "", quantity: "", unitCost: "" }]);
   const updateRow = (id: string, key: keyof Row, val: string) =>
     setRows((r) => r.map((x) => (x.id === id ? { ...x, [key]: val } : x)));
+
+  const onProduct = (id: string, productId: string) => {
+    const p = products.find((x) => x.id === productId);
+    setRows((r) =>
+      r.map((x) => {
+        if (x.id !== id) return x;
+        // Auto-fill unit cost from the product's current costPrice when a product is picked,
+        // but don't overwrite a cost the user has already typed.
+        const unitCost = productId && (x.unitCost === "" || x.unitCost == null)
+          ? String(p?.costPrice ?? "")
+          : x.unitCost;
+        return { ...x, productId, unitCost };
+      }),
+    );
+  };
   const removeRow = (id: string) => setRows((r) => r.filter((x) => x.id !== id));
 
   const subtotal = rows.reduce((sum, r) => {
@@ -139,9 +154,9 @@ export function PurchaseOrderForm({
             </div>
             {rows.map((r) => (
               <div key={r.id} className="grid grid-cols-[1.6fr_0.7fr_0.9fr_auto] items-center gap-2">
-                <select name="productId" value={r.productId} onChange={(e) => updateRow(r.id, "productId", e.target.value)} required className={controlClass}>
+                <select name="productId" value={r.productId} onChange={(e) => onProduct(r.id, e.target.value)} required className={controlClass}>
                   <option value="">Select product</option>
-                  {products.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>)}
+                  {products.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.sku}){p.costPrice != null ? ` · ₱${Number(p.costPrice).toFixed(2)}` : ""}</option>)}
                 </select>
                 <input name="quantity" type="number" min="1" value={r.quantity} onChange={(e) => updateRow(r.id, "quantity", e.target.value)} placeholder="Qty" className={controlClass} />
                 <input name="unitCost" type="number" step="0.01" value={r.unitCost} onChange={(e) => updateRow(r.id, "unitCost", e.target.value)} placeholder="Cost" className={controlClass} />
