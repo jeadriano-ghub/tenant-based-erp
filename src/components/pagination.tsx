@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageSizeSelector } from "@/components/page-size";
 
 type SP = Record<string, string | string[] | undefined>;
 
@@ -25,7 +26,7 @@ export function Pagination({
   basePath: string;
 }) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  if (totalPages <= 1 && total === 0) return null;
+  if (total === 0) return null;
 
   const href = (p: number) => {
     const sp = new URLSearchParams(norm(searchParams));
@@ -33,7 +34,7 @@ export function Pagination({
     return `${basePath}?${sp.toString()}`;
   };
 
-  const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
 
   return (
@@ -41,28 +42,31 @@ export function Pagination({
       <span className="text-[var(--muted)]">
         Showing {from}–{to} of {total}
       </span>
-      <div className="flex items-center gap-2">
-        <Link
-          href={href(page - 1)}
-          aria-disabled={page <= 1}
-          className={`rounded-md border px-3 py-1.5 text-xs font-medium ${
-            page <= 1 ? "pointer-events-none opacity-40" : "hover:bg-[var(--background)]"
-          }`}
-        >
-          Previous
-        </Link>
-        <span className="px-1 text-xs text-[var(--muted)]">
-          Page {page} / {totalPages}
-        </span>
-        <Link
-          href={href(page + 1)}
-          aria-disabled={page >= totalPages}
-          className={`rounded-md border px-3 py-1.5 text-xs font-medium ${
-            page >= totalPages ? "pointer-events-none opacity-40" : "hover:bg-[var(--background)]"
-          }`}
-        >
-          Next
-        </Link>
+      <div className="flex flex-wrap items-center gap-3">
+        <PageSizeSelector searchParams={searchParams} basePath={basePath} current={pageSize} />
+        <div className="flex items-center gap-2">
+          <Link
+            href={href(page - 1)}
+            aria-disabled={page <= 1}
+            className={`rounded-md border px-3 py-1.5 text-xs font-medium ${
+              page <= 1 ? "pointer-events-none opacity-40" : "hover:bg-[var(--background)]"
+            }`}
+          >
+            Previous
+          </Link>
+          <span className="px-1 text-xs text-[var(--muted)]">
+            Page {page} / {totalPages}
+          </span>
+          <Link
+            href={href(page + 1)}
+            aria-disabled={page >= totalPages}
+            className={`rounded-md border px-3 py-1.5 text-xs font-medium ${
+              page >= totalPages ? "pointer-events-none opacity-40" : "hover:bg-[var(--background)]"
+            }`}
+          >
+            Next
+          </Link>
+        </div>
       </div>
     </div>
   );

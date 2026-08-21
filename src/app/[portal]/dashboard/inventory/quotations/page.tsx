@@ -36,6 +36,8 @@ export default async function QuotationsPage({
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
   const status = typeof sp.status === "string" ? sp.status : "";
   const page = Math.max(1, Number(typeof sp.page === "string" ? sp.page : "1") || 1);
+  const sizeRaw = Number(typeof sp.size === "string" ? sp.size : "") || 0;
+  const pageSize = [10, 15, 25, 50, 100].includes(sizeRaw) ? sizeRaw : PAGE_SIZE;
 
   const base = portal.base;
   const basePath = `${base}/dashboard/inventory/quotations`;
@@ -47,7 +49,7 @@ export default async function QuotationsPage({
   if (status) where.status = status;
 
   const [quotations, total] = await Promise.all([
-    prisma.quotation.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE }),
+    prisma.quotation.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * pageSize, take: pageSize }),
     prisma.quotation.count({ where }),
   ]);
 
@@ -85,7 +87,7 @@ export default async function QuotationsPage({
             )}
           />
         )}
-        <Pagination searchParams={sp} page={page} pageSize={PAGE_SIZE} total={total} basePath={basePath} />
+        <Pagination searchParams={sp} page={page} pageSize={pageSize} total={total} basePath={basePath} />
       </Card>
     </div>
   );

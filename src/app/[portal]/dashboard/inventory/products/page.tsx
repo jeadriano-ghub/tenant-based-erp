@@ -37,6 +37,8 @@ export default async function ProductsPage({
   const brandId = typeof sp.brand === "string" ? sp.brand : "";
   const type = typeof sp.type === "string" ? sp.type : "";
   const page = Math.max(1, Number(typeof sp.page === "string" ? sp.page : "1") || 1);
+  const sizeRaw = Number(typeof sp.size === "string" ? sp.size : "") || 0;
+  const pageSize = [10, 15, 25, 50, 100].includes(sizeRaw) ? sizeRaw : PAGE_SIZE;
 
   const base = portal.base;
   const canCreate = can(keys, "inventory.product.create");
@@ -49,7 +51,7 @@ export default async function ProductsPage({
   if (type) where.productType = type;
 
   const [products, total, categories, brands] = await Promise.all([
-    prisma.product.findMany({ where, orderBy: { updatedAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE }),
+    prisma.product.findMany({ where, orderBy: { updatedAt: "desc" }, skip: (page - 1) * pageSize, take: pageSize }),
     prisma.product.count({ where }),
     prisma.category.findMany({ where: { tenantId: session.tenantId! }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
     prisma.brand.findMany({ where: { tenantId: session.tenantId! }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
@@ -98,7 +100,7 @@ export default async function ProductsPage({
             )}
           />
         )}
-        <Pagination searchParams={sp} page={page} pageSize={PAGE_SIZE} total={total} basePath={basePath} />
+        <Pagination searchParams={sp} page={page} pageSize={pageSize} total={total} basePath={basePath} />
       </Card>
     </div>
   );

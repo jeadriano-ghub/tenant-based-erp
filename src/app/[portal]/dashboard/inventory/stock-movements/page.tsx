@@ -35,6 +35,8 @@ export default async function StockMovementsPage({
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
   const type = typeof sp.type === "string" ? sp.type : "";
   const page = Math.max(1, Number(typeof sp.page === "string" ? sp.page : "1") || 1);
+  const sizeRaw = Number(typeof sp.size === "string" ? sp.size : "") || 0;
+  const pageSize = [10, 15, 25, 50, 100].includes(sizeRaw) ? sizeRaw : PAGE_SIZE;
 
   const base = portal.base;
   const basePath = `${base}/dashboard/inventory/stock-movements`;
@@ -47,8 +49,8 @@ export default async function StockMovementsPage({
   const stockMovements: any[] = await prisma.stockMovement.findMany({
     where,
     orderBy: { createdAt: "desc" },
-    skip: (page - 1) * PAGE_SIZE,
-    take: PAGE_SIZE,
+    skip: (page - 1) * pageSize,
+    take: pageSize,
   } as any);
   const total = (await prisma.stockMovement.count({ where } as any)) as number;
   const productIds = Array.from(new Set(stockMovements.map((sm: any) => sm.productId).filter(Boolean)));
@@ -96,7 +98,7 @@ export default async function StockMovementsPage({
             )}
           />
         )}
-        <Pagination searchParams={sp} page={page} pageSize={PAGE_SIZE} total={total} basePath={basePath} />
+        <Pagination searchParams={sp} page={page} pageSize={pageSize} total={total} basePath={basePath} />
       </Card>
     </div>
   );

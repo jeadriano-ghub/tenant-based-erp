@@ -37,6 +37,8 @@ export default async function PurchaseOrdersPage({
   const supplierId = typeof sp.supplier === "string" ? sp.supplier : "";
   const status = typeof sp.status === "string" ? sp.status : "";
   const page = Math.max(1, Number(typeof sp.page === "string" ? sp.page : "1") || 1);
+  const sizeRaw = Number(typeof sp.size === "string" ? sp.size : "") || 0;
+  const pageSize = [10, 15, 25, 50, 100].includes(sizeRaw) ? sizeRaw : PAGE_SIZE;
 
   const base = portal.base;
   const basePath = `${base}/dashboard/inventory/purchase-orders`;
@@ -49,7 +51,7 @@ export default async function PurchaseOrdersPage({
   if (status) where.status = status;
 
   const [purchaseOrders, total, suppliers] = await Promise.all([
-    prisma.purchaseOrder.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE }),
+    prisma.purchaseOrder.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * pageSize, take: pageSize }),
     prisma.purchaseOrder.count({ where }),
     prisma.supplier.findMany({ where: { tenantId: session.tenantId! }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
@@ -90,7 +92,7 @@ export default async function PurchaseOrdersPage({
             )}
           />
         )}
-        <Pagination searchParams={sp} page={page} pageSize={PAGE_SIZE} total={total} basePath={basePath} />
+        <Pagination searchParams={sp} page={page} pageSize={pageSize} total={total} basePath={basePath} />
       </Card>
     </div>
   );

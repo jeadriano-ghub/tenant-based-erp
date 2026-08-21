@@ -40,6 +40,8 @@ export default async function ManageCategoriesPage({
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
   const status = typeof sp.status === "string" ? sp.status : "";
   const page = Math.max(1, Number(typeof sp.page === "string" ? sp.page : "1") || 1);
+  const sizeRaw = Number(typeof sp.size === "string" ? sp.size : "") || 0;
+  const pageSize = [10, 15, 25, 50, 100].includes(sizeRaw) ? sizeRaw : PAGE_SIZE;
 
   const base = portal.base;
   const basePath = `${base}/dashboard/inventory/categories/manage`;
@@ -55,8 +57,8 @@ export default async function ManageCategoriesPage({
       where,
       orderBy: { name: "asc" },
       include: { _count: { select: { products: true } } },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     } as any),
     prisma.category.count({ where }),
   ]);
@@ -181,7 +183,7 @@ export default async function ManageCategoriesPage({
           })}
         </div>
       )}
-      <Pagination searchParams={sp} page={page} pageSize={PAGE_SIZE} total={total} basePath={basePath} />
+      <Pagination searchParams={sp} page={page} pageSize={pageSize} total={total} basePath={basePath} />
     </div>
   );
 }
