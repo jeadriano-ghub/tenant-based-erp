@@ -136,8 +136,8 @@ export default async function CategoryDetailPage({ params }: { params: Promise<{
         </Card>
       )}
 
-      {/* Products in this category */}
-      {canViewProducts && (
+      {/* Products in this category — only for subcategories */}
+      {canViewProducts && isSub && (
         <Card
           title="Products"
           description={products.length ? `${products.length} product(s) in this category.` : "No products in this category yet."}
