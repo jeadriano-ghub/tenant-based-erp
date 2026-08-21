@@ -61,7 +61,7 @@ export default async function CategoryDetailPage({ params }: { params: Promise<{
         title="Subcategories"
         description={subcategories.length ? "Nested categories under this one." : "No subcategories yet."}
         footer={
-          canEdit ? (
+          canEdit && !safeCategory.parentId ? (
             <LinkButton href={`${base}/dashboard/inventory/categories/new?parentId=${safeCategory.id}`} variant="secondary" size="sm">
               + Add subcategory
             </LinkButton>

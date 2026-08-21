@@ -44,7 +44,7 @@ export default async function EditCategoryPage({ params }: { params: Promise<{ p
   const parents = isSub
     ? []
     : await prisma.category.findMany({
-        where: { tenantId: session.tenantId!, isActive: true, id: { not: id } },
+        where: { tenantId: session.tenantId!, isActive: true, parentId: null, id: { not: id } },
         orderBy: { name: "asc" },
       });
 

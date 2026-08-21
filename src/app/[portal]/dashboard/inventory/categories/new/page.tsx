@@ -25,7 +25,7 @@ export default async function NewCategoryPage({
   if (!can(keys, "inventory.category.create")) redirect(`${portal.base}/dashboard/inventory/categories`);
 
   const base = portal.base;
-  const parents = await prisma.category.findMany({ where: { tenantId: session.tenantId!, isActive: true }, orderBy: { name: "asc" } } as any);
+  const parents = await prisma.category.findMany({ where: { tenantId: session.tenantId!, isActive: true, parentId: null }, orderBy: { name: "asc" } } as any);
   const lockedParent = parentId ? parents.find((p: any) => (p as any).id === parentId) : null;
   const isSub = Boolean(lockedParent);
 
